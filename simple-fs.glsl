@@ -24,5 +24,6 @@ void main() {
     vec3 texColor = texture(uTexture, vTexCoord).rgb;
     vec3 color = texColor * (ambient + diffuse) + vec3(specular);
     fragmentColor = vec4(color, 1.0);
+
 return;
 }

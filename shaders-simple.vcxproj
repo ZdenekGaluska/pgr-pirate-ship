@@ -79,12 +79,22 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="shaders-simple.cpp" />
+    <ClCompile Include="callbacks.cpp" />
+    <ClCompile Include="camera.cpp" />
+    <ClCompile Include="globals.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="mesh_utils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="README.txt" />
     <None Include="simple-fs.glsl" />
     <None Include="simple-vs.glsl" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="callbacks.h" />
+    <ClInclude Include="camera.h" />
+    <ClInclude Include="globals.h" />
+    <ClInclude Include="mesh_utils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
