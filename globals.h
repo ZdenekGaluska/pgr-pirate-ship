@@ -83,12 +83,13 @@ struct WaterGrid {
  */
 struct ShaderLocations {    
     GLuint program    = 0;
-    GLint  mPVM       = -1;   // uniform "mPVM"       = projekce * view * model
-    GLint  mModel     = -1;   // uniform "mModel"     = model matice (pro transformaci normal)
-    GLint  vDiffuse   = -1;   // uniform "vDiffuse"   = barva materialu
-    GLint  vLightDir  = -1;   // uniform "vLightDir"  = smer svetla (normalizovany vektor)
-    GLint  vCameraPos = -1;   // uniform "vCameraPos" = pozice kamery (pro specular highlight)
-    GLint  fWaterUVScale = -1; // uniform "uWaterUVScale" — mierka UV pro vodu z world coords
+    GLint  mPVM       = -1;     // uniform "mPVM"       = projekce * view * model
+    GLint  mModel     = -1;     // uniform "mModel"     = model matice (pro transformaci normal)
+    GLint  vDiffuse   = -1;     // uniform "vDiffuse"   = barva materialu
+    GLint  vLightDir  = -1;     // uniform "vLightDir"  = smer svetla (normalizovany vektor)
+    GLint  vCameraPos = -1;     // uniform "vCameraPos" = pozice kamery (pro specular highlight)
+    GLint  fWaterUVScale = -1;  // uniform "uWaterUVScale" — mierka UV pro vodu z world coords
+    GLint  fTime = -1;          // lokace uniformu "u_time" v shaderu — -1 = zatim nenalezeno
 };
 
 // ================================================================================

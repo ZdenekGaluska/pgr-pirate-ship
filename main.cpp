@@ -102,6 +102,10 @@ bool init() {
     shdr.vLightDir  = glGetUniformLocation(shdr.program, "vLightDir");
     shdr.vCameraPos = glGetUniformLocation(shdr.program, "vCameraPos");
     shdr.fWaterUVScale = glGetUniformLocation(shdr.program, "uWaterUVScale");
+    shdr.fTime = glGetUniformLocation(shdr.program, "u_time");
+
+    // Poslat pocatecni hodnotu 0.0 — animace se spusti az v dalsim kroku
+    glUniform1f(shdr.fTime, 0.0f);
 
     glUniform1f(shdr.fWaterUVScale, 0.0f);
     glUseProgram(0);

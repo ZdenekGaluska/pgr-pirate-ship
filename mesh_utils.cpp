@@ -160,8 +160,8 @@ Mesh uploadMesh(const aiMesh* mesh, const aiMaterial* mat) {
 void generateWaterGrid(WaterGrid& grid) {
     // N = pocet vrcholu na jeden bok mrizky.
     // Vysledna mrizka ma N*N vrcholu a (N-1)*(N-1) ctvercu = 2*(N-1)^2 trojuhelniku.
-    const int   N    = 64;
-    const float SIZE = 100.0f;   // celkova velikost mrizky ve world units
+    const int   N    = 2*512;
+    const float SIZE = 60.0f;   // celkova velikost mrizky ve world units
     const float step = SIZE / (N - 1);   // vzdalenost mezi sousednimi vrcholy
     const float half = SIZE / 2.0f;      // posunout mrizku tak aby byla centrovana na (0,0)
 

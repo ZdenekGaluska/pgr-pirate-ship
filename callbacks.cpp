@@ -43,6 +43,7 @@ void onDisplay() {
     glUniformMatrix4fv(shdr.mModel, 1, GL_FALSE, glm::value_ptr(model));
     glUniform3fv(shdr.vLightDir, 1, glm::value_ptr(LIGHT_DIR));
     glUniform3fv(shdr.vCameraPos, 1, glm::value_ptr(g_camPos));
+    glUniform1f(shdr.fTime, glutGet(GLUT_ELAPSED_TIME) / 800.0f);
 
     // --- Kreslit vsechny sub-mese lode ---
     for (const auto& m : g_meshes) {
