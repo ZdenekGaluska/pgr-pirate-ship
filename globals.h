@@ -21,8 +21,8 @@
 // KONSTANTY OKNA A KAMERY
 // ================================================================================
 
-const int   WIN_WIDTH  = 1280;
-const int   WIN_HEIGHT = 720;
+const int   WIN_WIDTH  = 1920;
+const int   WIN_HEIGHT = 1080;
 const char* const WIN_TITLE  = "Piratska lod - vaclaon3";
 
 const float CAM_SPEED  = 0.15f;   // rychlost pohybu kamery (jednotky/snimek)
@@ -71,6 +71,7 @@ struct WaterGrid {
     GLuint       vbo        = 0;
     GLuint       ibo        = 0;
     unsigned int numIndices = 0;
+    GLuint texture = 0; //diffuse textura vody
 };
 
 /**
@@ -80,13 +81,14 @@ struct WaterGrid {
  * a vysledky si ulozime sem. Pri kazdem draw callu pak pouzijeme ulozene hodnoty
  * misto opakovaneho vyhledavani.
  */
-struct ShaderLocations {
+struct ShaderLocations {    
     GLuint program    = 0;
     GLint  mPVM       = -1;   // uniform "mPVM"       = projekce * view * model
     GLint  mModel     = -1;   // uniform "mModel"     = model matice (pro transformaci normal)
     GLint  vDiffuse   = -1;   // uniform "vDiffuse"   = barva materialu
     GLint  vLightDir  = -1;   // uniform "vLightDir"  = smer svetla (normalizovany vektor)
     GLint  vCameraPos = -1;   // uniform "vCameraPos" = pozice kamery (pro specular highlight)
+    GLint  fWaterUVScale = -1; // uniform "uWaterUVScale" — mierka UV pro vodu z world coords
 };
 
 // ================================================================================

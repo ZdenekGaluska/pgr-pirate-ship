@@ -56,6 +56,13 @@ bool init() {
     // Vygenerovat mrizku vody
     // -----------------------------------------------------------------------
     generateWaterGrid(g_water);
+    
+    // Nacist texturu vody ze souboru do GPU
+    // Cesta je relativni k Working Directory (koren projektu vedle .sln)
+    g_water.texture = loadTexture("water.png");
+    if (!g_water.texture)
+        std::cerr << "Varovani: textura vody nenalezena, voda bude cerna." << std::endl;
+
 
     // -----------------------------------------------------------------------
     // Nacist a slinkovat shadery
@@ -94,7 +101,9 @@ bool init() {
     shdr.vDiffuse   = glGetUniformLocation(shdr.program, "vDiffuse");
     shdr.vLightDir  = glGetUniformLocation(shdr.program, "vLightDir");
     shdr.vCameraPos = glGetUniformLocation(shdr.program, "vCameraPos");
+    shdr.fWaterUVScale = glGetUniformLocation(shdr.program, "uWaterUVScale");
 
+    glUniform1f(shdr.fWaterUVScale, 0.0f);
     glUseProgram(0);
 
     // -----------------------------------------------------------------------

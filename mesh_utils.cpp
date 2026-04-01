@@ -59,14 +59,6 @@ Mesh uploadMesh(const aiMesh* mesh, const aiMaterial* mat) {
 
     // -----------------------------------------------------------------------
     // VBO — nahraje pozice, normaly a UV souradnice na GPU.
-    //
-    // Pouziva se "non-interleaved" layout:
-    //   Offset 0:      [pos0, pos1, ..., posN]    (3 floaty * N)
-    //   Offset 3*N:    [norm0, norm1, ..., normN]  (3 floaty * N)
-    //   Offset 6*N:    [uv0, uv1, ..., uvN]        (2 floaty * N)
-    //
-    // Celkova velikost VBO: (3 + 3 + 2) * sizeof(float) * N = 8 * 4 * N bytu.
-    // glBufferData(nullptr) = alokuj misto ale nenaplnuj — naplnime po castech pres SubData.
     // -----------------------------------------------------------------------
     glGenBuffers(1, &m.vbo);
     glBindBuffer(GL_ARRAY_BUFFER, m.vbo);
@@ -100,9 +92,6 @@ Mesh uploadMesh(const aiMesh* mesh, const aiMaterial* mat) {
 
     // -----------------------------------------------------------------------
     // IBO — indexy trojuhelniku.
-    //
-    // Kazda face ma 3 indexy (garantovano aiProcess_Triangulate).
-    // Indexy ukazuji do pole vrcholu ve VBO.
     // -----------------------------------------------------------------------
     std::vector<unsigned int> idx(mesh->mNumFaces * 3);
     for (unsigned f = 0; f < mesh->mNumFaces; ++f) {
@@ -119,13 +108,6 @@ Mesh uploadMesh(const aiMesh* mesh, const aiMaterial* mat) {
 
     // -----------------------------------------------------------------------
     // VAO — "recept" jak cist VBO.
-    //
-    // VAO si zapamatuje:
-    //   - ktery VBO a IBO jsou aktivni
-    //   - pro kazdy atribut shaderu: kde v VBO data zacínají (offset) a jak jsou velka
-    //
-    // Bez VAO by ses pred kazdym draw callem musel znovu "popisovat" layout dat.
-    // S VAO staci jen glBindVertexArray(m.vao) a OpenGL vi vse.
     // -----------------------------------------------------------------------
     glGenVertexArrays(1, &m.vao);
     glBindVertexArray(m.vao);
@@ -154,9 +136,7 @@ Mesh uploadMesh(const aiMesh* mesh, const aiMaterial* mat) {
 
     // -----------------------------------------------------------------------
     // Material — diffuse textura a barva.
-    //
     // GetTexture() vrati cestu k texturovemu souboru jak je ulozena v GLTF.
-    // Cesta je relativni k adresari modelu, musime pripojit prefix "pirate_ship/".
     // -----------------------------------------------------------------------
     aiString texPath;
     if (mat->GetTexture(aiTextureType_DIFFUSE, 0, &texPath) == AI_SUCCESS) {
