@@ -4,7 +4,7 @@
  * \author  vaclaon3
  * \brief   Implementace utility funkci pro mese a textury.
  */
-//----------------------------------------------------------------------------------------
+ //----------------------------------------------------------------------------------------
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -22,7 +22,7 @@ GLuint loadTexture(const char* path) {
     unsigned char* data = stbi_load(path, &w, &h, &channels, 0);
 
     std::cerr << "Nacitam texturu: " << path
-              << " -> " << (data ? "OK" : "FAIL") << std::endl;
+        << " -> " << (data ? "OK" : "FAIL") << std::endl;
 
     if (!data) {
         std::cerr << "  Chyba: " << stbi_failure_reason() << std::endl;
@@ -40,8 +40,8 @@ GLuint loadTexture(const char* path) {
     glGenerateMipmap(GL_TEXTURE_2D);   // automaticky vygenerovat mipmaps
 
     // Nastaveni filtrovani a opakovani
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
@@ -81,7 +81,7 @@ Mesh uploadMesh(const aiMesh* mesh, const aiMaterial* mat) {
     std::vector<float> uvs(2 * N, 0.0f);
     if (mesh->HasTextureCoords(0)) {
         for (unsigned i = 0; i < N; ++i) {
-            uvs[2 * i]     = mesh->mTextureCoords[0][i].x;
+            uvs[2 * i] = mesh->mTextureCoords[0][i].x;
             uvs[2 * i + 1] = mesh->mTextureCoords[0][i].y;
         }
     }
@@ -112,7 +112,7 @@ Mesh uploadMesh(const aiMesh* mesh, const aiMaterial* mat) {
     glGenVertexArrays(1, &m.vao);
     glBindVertexArray(m.vao);
 
-    // IBO se ukla DA do VAO — kazde glDrawElements pak ví odkud brat indexy
+    // IBO se ulozi do VAO — kazde glDrawElements pak vi odkud brat indexy
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m.ibo);
     glBindBuffer(GL_ARRAY_BUFFER, m.vbo);
 
@@ -160,8 +160,15 @@ Mesh uploadMesh(const aiMesh* mesh, const aiMaterial* mat) {
 void generateWaterGrid(WaterGrid& grid) {
     // N = pocet vrcholu na jeden bok mrizky.
     // Vysledna mrizka ma N*N vrcholu a (N-1)*(N-1) ctvercu = 2*(N-1)^2 trojuhelniku.
-    const int   N    = 2*512;
-    const float SIZE = 60.0f;   // celkova velikost mrizky ve world units
+    const int   N = 2 * 512;
+
+    // SIZE = skutecna world-space velikost mrizky.
+    // DULEZITE: model matrix vody musi byt identita (zadny scale)!
+    // Pokud bys pouzil scale v model matrix, Gerstner displacement (pocitany ve world space)
+    // by se take zvetsal — CPU a GPU by pocitaly ruzne vysky hladiny.
+    // Proto je mrizka rovnou ve spravne world-space velikosti.
+    const float SIZE = 240.0f;
+
     const float step = SIZE / (N - 1);   // vzdalenost mezi sousednimi vrcholy
     const float half = SIZE / 2.0f;      // posunout mrizku tak aby byla centrovana na (0,0)
 
@@ -221,7 +228,7 @@ void generateWaterGrid(WaterGrid& grid) {
     // VAO si toto nastaveni ulozi — pri draw callu staci jen glBindVertexArray.
     glGenVertexArrays(1, &grid.vao);
     glBindVertexArray(grid.vao);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, grid.ibo);   // IBO se ukla DA do VAO
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, grid.ibo);   // IBO se ulozi do VAO
     glBindBuffer(GL_ARRAY_BUFFER, grid.vbo);
 
     // Atribut 0: pozice (3 floaty)

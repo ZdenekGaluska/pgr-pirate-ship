@@ -57,7 +57,7 @@ void gerstnerWave(
     // XZ displacement — vrcholy se nekrouzi jen nahoru/dolu ale i do strany
     // To dava Gerstnerove vlne charakteristicky ostry hrb
     displacement.x += Q * amplitude * dir.x * cos(phi);
-    displacement.y += Q * amplitude * dir.y * cos(phi);
+    displacement.z += Q * amplitude * dir.y * cos(phi);
 
     // Y displacement — vertikalni pohyb vrcholu
     displacement.y += amplitude * sin(phi);
@@ -84,34 +84,34 @@ void main() {
         vec3 nAccum = vec3(0.0, 1.0, 0.0); // zacneme od normaly smerujici nahoru (flat plane)
 
 gerstnerWave(vWorldPos.xz, normalize(vec2(1.0, 0.2)),
-    0.2, 25.0, 1.0, 0.04, 0.0, disp, nAccum);
-
+    0.8, 25.0, 1.0, 0.04, 0.0, disp, nAccum);
+    
 gerstnerWave(vWorldPos.xz, normalize(vec2(0.8, 0.5)),
-    0.15, 20.0, 0.9, 0.035, 2.3, disp, nAccum);
+    0.6, 20.0, 0.9, 0.035, 2.3, disp, nAccum);
 
 gerstnerWave(vWorldPos.xz, normalize(vec2(-0.4, 1.0)),
-    0.035, 15.0, 1.3, 0.015, 1.1, disp, nAccum);
+    0.14, 15.0, 1.3, 0.015, 1.1, disp, nAccum);
 
 gerstnerWave(vWorldPos.xz, normalize(vec2(0.3, -0.8)),
-    0.03, 13.0, 1.4, 0.012, 3.7, disp, nAccum);
+    0.12, 13.0, 1.4, 0.012, 3.7, disp, nAccum);
 
 gerstnerWave(vWorldPos.xz, normalize(vec2(-0.7, 0.4)),
-    0.03, 10.0, 1.7, 0.01, 0.8, disp, nAccum);
+    0.12, 10.0, 1.7, 0.01, 0.8, disp, nAccum);
 
 gerstnerWave(vWorldPos.xz, normalize(vec2(0.6, -0.3)),
-    0.017, 9.0, 1.6, 0.01, 2.9, disp, nAccum);
+    0.068, 9.0, 1.6, 0.01, 2.9, disp, nAccum);
 
 gerstnerWave(vWorldPos.xz, normalize(vec2(-0.2, -0.9)),
-    0.015, 7.0, 2.0, 0.008, 4.2, disp, nAccum);
+    0.060, 7.0, 2.0, 0.008, 4.2, disp, nAccum);
 
 gerstnerWave(vWorldPos.xz, normalize(vec2(0.9, 0.1)),
-    0.01, 6.0, 2.1, 0.007, 1.6, disp, nAccum);
+    0.04, 6.0, 2.1, 0.007, 1.6, disp, nAccum);
 
 gerstnerWave(vWorldPos.xz, normalize(vec2(-0.5, 0.7)),
-    0.007, 4.5, 2.4, 0.005, 3.3, disp, nAccum);
+    0.029, 4.5, 2.4, 0.005, 3.3, disp, nAccum);
 
 gerstnerWave(vWorldPos.xz, normalize(vec2(0.4, 0.6)),
-    0.005, 3.0, 2.8, 0.004, 5.1, disp, nAccum);
+    0.02, 3.0, 2.8, 0.004, 5.1, disp, nAccum);
 
         // Aplikuj displacement na world pozici vrcholu
         vec3 displacedPos = position + disp;

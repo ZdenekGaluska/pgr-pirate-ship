@@ -79,6 +79,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="algorithms.cpp" />
     <ClCompile Include="callbacks.cpp" />
     <ClCompile Include="camera.cpp" />
     <ClCompile Include="globals.cpp" />
@@ -91,6 +92,7 @@
     <None Include="simple-vs.glsl" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="algorithms.h" />
     <ClInclude Include="callbacks.h" />
     <ClInclude Include="camera.h" />
     <ClInclude Include="globals.h" />

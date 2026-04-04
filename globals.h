@@ -112,6 +112,10 @@ extern float     g_camPitch;  // rotace nahoru/dolu   (kolem osy X), stupne
 // Pohyb kamery se pocita v onTimer(), ne primo v onKeyDown() — tak je plynuly.
 extern bool g_keys[256];
 
+// --- Stav lode ---
+extern glm::vec3 g_shipPos;
+extern float g_shipY;   // aktualni vyska lode
+
 // --- Svetlo ---
 // Pevny smer slunce (normalizovany unit vektor, definovano v globals.cpp).
 extern const glm::vec3 LIGHT_DIR;
