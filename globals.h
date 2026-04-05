@@ -11,7 +11,7 @@
  *   - Konstanty (const) jsou tady primo — kompilator je inlinuje, zadny ODR problem.
  *   - Struktury jsou tady — definice typu neni definice promenne, tedy OK.
  */
-//----------------------------------------------------------------------------------------
+ //----------------------------------------------------------------------------------------
 
 #include "pgr.h"          // GLEW + freeglut + GLM + Assimp + pgr utility
 #include <vector>
@@ -21,13 +21,16 @@
 // KONSTANTY OKNA A KAMERY
 // ================================================================================
 
-const int   WIN_WIDTH  = 1920;
+const int   WIN_WIDTH = 1920;
 const int   WIN_HEIGHT = 1080;
-const char* const WIN_TITLE  = "Piratska lod - vaclaon3";
+const char* const WIN_TITLE = "Piratska lod - vaclaon3";
 
-const float CAM_SPEED  = 0.15f;   // rychlost pohybu kamery (jednotky/snimek)
-const float CAM_SENS   = 0.1f;    // citlivost mysi (stupne/pixel)
+const float CAM_SPEED = 0.15f;   // rychlost pohybu kamery (jednotky/snimek)
+const float CAM_SENS = 0.1f;    // citlivost mysi (stupne/pixel)
 const float ZOOM_SPEED = 0.8f;    // rychlost zoomu pri scrollovani
+
+const float SHIP_SPEED = 0.08f;
+const float SHIP_TURN_SPEED = 0.30f;
 
 // ================================================================================
 // KONSTANTY MODELU
@@ -52,26 +55,32 @@ const char* const MODEL_PATH = "pirate_ship/scene.gltf";
  * IBO (Index Buffer Object)  = buffer s indexy trojuhelniku na GPU
  */
 struct Mesh {
-    GLuint       vao          = 0;
-    GLuint       vbo          = 0;
-    GLuint       ibo          = 0;
+    GLuint       vao = 0;
+    GLuint       vbo = 0;
+    GLuint       ibo = 0;
     unsigned int numTriangles = 0;
     glm::vec3    diffuseColor = glm::vec3(0.8f);  // zakladni barva materialu
-    GLuint       texture      = 0;                 // ID diffuse textury, 0 = zadna textura
+    GLuint       texture = 0;                 // ID diffuse textury, 0 = zadna textura
+};
+
+// 
+enum CameraMode {
+    CAM_FREE = 0,
+    CAM_SHIP = 1
 };
 
 /**
  * WaterGrid = plocha vody reprezentovana pravidelnou mrizkou trojuhelniku.
  *
  * Vrcholy mrizky jsou generovany v CPU (generateWaterGrid), nahrane do GPU.
- * Shader pak vrcholy animuje (v budoucnu Gerstner waves).
+ * Shader pak vrcholy animuje (Gerstner waves).
  */
 struct WaterGrid {
-    GLuint       vao        = 0;
-    GLuint       vbo        = 0;
-    GLuint       ibo        = 0;
+    GLuint       vao = 0;
+    GLuint       vbo = 0;
+    GLuint       ibo = 0;
     unsigned int numIndices = 0;
-    GLuint texture = 0; //diffuse textura vody
+    GLuint       texture = 0;   // diffuse textura vody
 };
 
 /**
@@ -81,15 +90,15 @@ struct WaterGrid {
  * a vysledky si ulozime sem. Pri kazdem draw callu pak pouzijeme ulozene hodnoty
  * misto opakovaneho vyhledavani.
  */
-struct ShaderLocations {    
-    GLuint program    = 0;
-    GLint  mPVM       = -1;     // uniform "mPVM"       = projekce * view * model
-    GLint  mModel     = -1;     // uniform "mModel"     = model matice (pro transformaci normal)
-    GLint  vDiffuse   = -1;     // uniform "vDiffuse"   = barva materialu
-    GLint  vLightDir  = -1;     // uniform "vLightDir"  = smer svetla (normalizovany vektor)
-    GLint  vCameraPos = -1;     // uniform "vCameraPos" = pozice kamery (pro specular highlight)
-    GLint  fWaterUVScale = -1;  // uniform "uWaterUVScale" — mierka UV pro vodu z world coords
-    GLint  fTime = -1;          // lokace uniformu "u_time" v shaderu — -1 = zatim nenalezeno
+struct ShaderLocations {
+    GLuint program = 0;
+    GLint  mPVM = -1;   // uniform "mPVM"          = projekce * view * model
+    GLint  mModel = -1;   // uniform "mModel"        = model matice (pro transformaci normal)
+    GLint  vDiffuse = -1;   // uniform "vDiffuse"      = barva materialu
+    GLint  vLightDir = -1;   // uniform "vLightDir"     = smer svetla (normalizovany vektor)
+    GLint  vCameraPos = -1;   // uniform "vCameraPos"    = pozice kamery (pro specular highlight)
+    GLint  fWaterUVScale = -1;  // uniform "uWaterUVScale" = mierka UV pro vodu z world coords
+    GLint  fTime = -1;   // uniform "u_time"        = aktualni cas v sekundach
 };
 
 // ================================================================================
@@ -113,8 +122,13 @@ extern float     g_camPitch;  // rotace nahoru/dolu   (kolem osy X), stupne
 extern bool g_keys[256];
 
 // --- Stav lode ---
-extern glm::vec3 g_shipPos;
-extern float g_shipY;   // aktualni vyska lode
+extern glm::vec3 g_shipPos;      // XZ pozice lode ve world space (Y se pocita z vln)
+extern float     g_shipY;        // aktualni vyska lode — pomalu lerp-uje k vysce vlny
+extern glm::vec3 g_shipNormal;   // aktualni normala pod lodi — pomalu lerp-uje k normale vlny
+extern float     g_shipYaw;
+
+// --- Stav kamery
+extern CameraMode g_cameraMode;
 
 // --- Svetlo ---
 // Pevny smer slunce (normalizovany unit vektor, definovano v globals.cpp).

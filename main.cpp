@@ -1,7 +1,7 @@
 //----------------------------------------------------------------------------------------
 /**
  * \file    main.cpp
- * \author  vaclaon3
+ * \author  galuszde
  * \brief   Vstupni bod programu. Inicializace GLUT, OpenGL a sceny. Spusteni hlavni smycky.
  *
  * Poradi inicializace je dulezite:
@@ -20,7 +20,7 @@
 // ================================================================================
 // init() — inicializace sceny
 //
-// Vola se jednou po pgr::initialize(). Nacte model, shadery, nastavi OpenGL stav.
+// Vola se jednou. Nacte model, shadery, nastavi OpenGL stav.
 // Vraci false pokud neco selze — program se pak ukonci s chybou.
 // ================================================================================
 
@@ -66,11 +66,6 @@ bool init() {
 
     // -----------------------------------------------------------------------
     // Nacist a slinkovat shadery
-    //
-    // pgr::createShaderFromFile() zkompiluje GLSL shader ze souboru.
-    // pgr::createProgram()        slinkuje vertex + fragment shader do programu.
-    // Cesty jsou relativni k Working Directory (nastavit ve VS: Project -> Properties
-    // -> Debugging -> Working Directory = $(ProjectDir)).
     // -----------------------------------------------------------------------
     GLuint shaders[] = {
         pgr::createShaderFromFile(GL_VERTEX_SHADER,   "simple-vs.glsl"),
@@ -85,10 +80,6 @@ bool init() {
 
     // -----------------------------------------------------------------------
     // Ulozit lokace uniform promennych shaderu
-    //
-    // glGetUniformLocation() je relativne pomale — volame ho jednou tady
-    // a vysledky ulozime do shdr.*. Pri kazdem draw callu pak pouzijeme
-    // ulozene hodnoty (viz callbacks.cpp / onDisplay).
     // -----------------------------------------------------------------------
     glUseProgram(shdr.program);
 
@@ -132,10 +123,9 @@ int main(int argc, char* argv[]) {
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize(WIN_WIDTH, WIN_HEIGHT);
     glutCreateWindow(WIN_TITLE);
-    glutSetCursor(GLUT_CURSOR_NONE);   // skryt kurzor mysi (FPS styl)
+    glutSetCursor(GLUT_CURSOR_NONE);   // skryt kurzor mysi
 
     // --- Registrace callbacku ---
-    // MUSI byt pred pgr::initialize(), ale az po glutCreateWindow()
     glutDisplayFunc(onDisplay);
     glutReshapeFunc(onReshape);
     glutKeyboardFunc(onKeyDown);
@@ -145,16 +135,15 @@ int main(int argc, char* argv[]) {
     glutTimerFunc(16, onTimer, 0);   // spustit herni smycku (16ms = ~60 FPS)
 
     // --- Inicializace PGR frameworku (GLEW) ---
-    // MUSI byt az po glutCreateWindow() — GLEW potrebuje existujici OpenGL kontext!
     if (!pgr::initialize(pgr::OGL_VER_MAJOR, pgr::OGL_VER_MINOR))
         pgr::dieWithError("pgr::initialize() selhalo — nepodporovana verze OpenGL?");
 
-    // --- Inicializace nasi sceny ---
+    // --- Inicializace sceny ---
     if (!init())
         pgr::dieWithError("init() selhalo — viz chybova hlaseni vyse.");
 
     // --- Hlavni smycka GLUT ---
-    // Odtud program nikdy nevrati (az do zavreni okna nebo ESC).
+    // Odtud program nikdy nevrati
     // GLUT vola callbacky registrovane vyse podle eventu.
     glutMainLoop();
     return 0;

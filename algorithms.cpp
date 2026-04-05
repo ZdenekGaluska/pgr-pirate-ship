@@ -78,4 +78,4 @@ namespace vaclaon3 {
         return { disp, glm::normalize(normal) };
     }
 
-} // namespace vaclaon3
+} // namespace vaclaon3ger

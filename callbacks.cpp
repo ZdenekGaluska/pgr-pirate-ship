@@ -18,12 +18,30 @@ void onDisplay() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glUseProgram(shdr.program);
 
-    // --- View matice ---
-    glm::mat4 view = glm::lookAt(
-        g_camPos,
-        g_camPos + getCamFront(),
-        glm::vec3(0.0f, 1.0f, 0.0f)
-    );
+    glm::mat4 view;
+    if (g_cameraMode == CAM_SHIP) {
+
+        glm::vec3 shipFront = glm::normalize(glm::vec3(
+            cos(glm::radians(g_shipYaw)),
+            0.0f,
+            sin(glm::radians(g_shipYaw))
+        ));
+
+        g_camPos = g_shipPos - shipFront * 9.0f + glm::vec3(0.0f, 4.0f, 0.0f);
+        view = glm::lookAt(
+            g_camPos ,
+            g_shipPos  + glm::vec3(0.0f, 2.2f, 0.0f),
+            glm::vec3(0.0f, 1.0f, 0.0f)
+        );
+    }
+
+    if(g_cameraMode == CAM_FREE){
+        view = glm::lookAt(
+            g_camPos,
+            g_camPos + getCamFront(),
+            glm::vec3(0.0f, 1.0f, 0.0f)
+        );
+    }
 
     // --- Projekcni matice ---
     glm::mat4 proj = glm::perspective(
@@ -33,35 +51,54 @@ void onDisplay() {
         200.0f
     );
 
-    // --- Cas spocitat JEDNOU na zacatku framu ---
-    // Oba pouzivaci (CPU evaluace vln + uniform do shaderu) museji dostat
-    // identickou hodnotu — jinak CPU a GPU pocitaji vlny v ruznych casech
-    // a lod se nezobrazuje na spravne vysce hladiny.
     float t = glutGet(GLUT_ELAPSED_TIME) / 800.0f;
 
-    // --- Vyska lode z Gerstner vln ---
-    // Evaluujeme vlny na world-space XZ pozici lode.
-    // Az budes pohybovat gridem misto lodi, zmen tady XZ na offset gridu
-    // (napr. g_shipPos.xz - g_gridOffset) — lerp nize to neovlivni.
-    vaclaon3::GerstnerResult wave = vaclaon3::evaluateGerstner(
-        glm::vec2(g_shipPos.x, g_shipPos.z),
-        t
-    );
+    const float SHIP_PROBE = 1.5f;
 
-    // --- Plynule sledovani vysky vlny (lerp) ---
-    // targetY = vyska vlny + rucni offset (doladeni aby lod vizualne sedela na hladine)
-    // -0.3f = posunout dolu — zmen podle velikosti modelu lode
-    float targetY = wave.displacement.y - 0.3f;
+    // Stred lode — pouzijeme pro vertikalni vysku
+    vaclaon3::GerstnerResult wCenter = vaclaon3::evaluateGerstner(
+        glm::vec2(g_shipPos.x, g_shipPos.z), t);
 
-    // glm::mix(a, b, t) = linearni interpolace: a + (b - a) * t
-    // 0.05f = lod se za kazdy snimek priblizi o 5 % k cilove vysce
-    // cim mensi cislo, tim vetsi zpozdeni reakce na vlny
-    g_shipY = glm::mix(g_shipY, targetY, 0.05f);
+    // 4 body kolem stredu — prid, zad, levy bok, pravy bok
+    // Z kazdeho bodu bereme jen normalu (vyska zajima jen stred)
+    glm::vec3 normalSum = glm::vec3(0.0f);
+    normalSum += vaclaon3::evaluateGerstner(
+        glm::vec2(g_shipPos.x, g_shipPos.z + SHIP_PROBE), t).normal;
+    normalSum += vaclaon3::evaluateGerstner(
+        glm::vec2(g_shipPos.x, g_shipPos.z - SHIP_PROBE), t).normal;
+    normalSum += vaclaon3::evaluateGerstner(
+        glm::vec2(g_shipPos.x + SHIP_PROBE, g_shipPos.z), t).normal;
+    normalSum += vaclaon3::evaluateGerstner(
+        glm::vec2(g_shipPos.x - SHIP_PROBE, g_shipPos.z), t).normal;
+
+    // Prumer normaly = normalize(soucet) — jeden vektor reprezentujici
+    // prumernou orientaci povrchu vody pod lodi
+    glm::vec3 targetNormal = glm::normalize(normalSum);
+
+    // --- Plynule sledovani vysky a naklonu (lerp) ---
+    // glm::mix(a, b, t) = a + (b-a)*t — priblizi se o t*100 % k cilove hodnote
+    // 0.05f pro vysku, 0.03f pro naklon — naklon reaguje trochu pomaleji
+    float targetY = wCenter.displacement.y - 0.45f;
+    g_shipY = glm::mix(g_shipY, targetY, 0.1f);
+    g_shipNormal = glm::normalize(glm::mix(g_shipNormal, targetNormal, 0.06f));
 
     // --- Model matice lode ---
-    // Pouziva g_shipY (pomalu sleduje vlnu) misto prime hodnoty z wave.displacement.y
     glm::mat4 model = glm::translate(glm::mat4(1.0f),
         glm::vec3(g_shipPos.x, g_shipY, g_shipPos.z));
+
+    // Rotace lode podle zprumerovane normaly vlny:
+    // Chceme otocit vektor (0,1,0) na g_shipNormal.
+    // cross(up, normal) = osa kolem ktere se lod natoci
+    // atan2(sinA, cosA) = uhel o kolik — pouzivame atan2 misto acos
+    //                     kvuli numericke stabilite pri malych uhlech
+    glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+    glm::vec3 axis = glm::cross(up, g_shipNormal);
+    float     sinA = glm::length(axis);
+    float     cosA = glm::dot(up, g_shipNormal);
+    if (sinA > 0.0001f)   // ochrana: kdyz je lod temer rovne, axis je nulovy vektor
+        model = glm::rotate(model, std::atan2(sinA, cosA), glm::normalize(axis));
+
+    model = glm::rotate(model, -glm::radians(g_shipYaw + 180.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     model = glm::scale(model, glm::vec3(0.5f));
 
     // --- PVM = proj * view * model ---
@@ -84,12 +121,7 @@ void onDisplay() {
     }
 
     // --- Kreslit vodu ---
-    // Model matrix vody je IDENTITA (zadny scale ani posun).
-    // DULEZITE: pokud bys pouzil scale (napr. glm::scale(..., vec3(4.0f))),
-    // shader by displacement (pocitany ve world space) take zvetsal 4x,
-    // ale CPU evaluace zustane nezmenena — lod by pak letela nad/pod vodou.
-    // Reseni: mrizka je rovnou ve spravne world-space velikosti (viz generateWaterGrid).
-    glm::mat4 modelWater = glm::mat4(1.0f);
+    glm::mat4 modelWater = glm::translate(glm::mat4(1.0f), glm::vec3(g_camPos.x, 0.0f, g_camPos.z));
     glm::mat4 PVMwater = proj * view * modelWater;
     glUniformMatrix4fv(shdr.mPVM, 1, GL_FALSE, glm::value_ptr(PVMwater));
     glUniformMatrix4fv(shdr.mModel, 1, GL_FALSE, glm::value_ptr(modelWater));
@@ -128,6 +160,8 @@ void onKeyDown(unsigned char key, int /*x*/, int /*y*/) {
     if (key == 27) glutLeaveMainLoop();   // ESC = korektne ukoncit program
     g_keys[key] = true;
     // Pohyb se nepocita tady — pocita ho onTimer() jednou za snimek.
+
+    if (key == 9) g_cameraMode = (CameraMode)((g_cameraMode + 1) % 2);
 }
 
 void onKeyUp(unsigned char key, int /*x*/, int /*y*/) {
@@ -139,24 +173,26 @@ void onKeyUp(unsigned char key, int /*x*/, int /*y*/) {
 // ================================================================================
 
 void onMouseMotion(int x, int y) {
-    int cx = WIN_WIDTH / 2;
-    int cy = WIN_HEIGHT / 2;
+    if(g_cameraMode == CAM_FREE) {
+        int cx = WIN_WIDTH / 2;
+        int cy = WIN_HEIGHT / 2;
 
-    // Ignoruj event ktery vznikl samotnym glutWarpPointer nize.
-    if (x == cx && y == cy) return;
+        // Ignoruj event ktery vznikl samotnym glutWarpPointer nize.
+        if (x == cx && y == cy) return;
 
-    // dx/dy = posun mysi od stredu okna za posledni snimek
-    // Yaw  += dx * citlivost  (pohyb doprava zvetsuje yaw)
-    // Pitch -= dy * citlivost (pohyb mysi dolu = zmenseni pitch = koukani dolu)
-    g_camYaw += CAM_SENS * (x - cx);
-    g_camPitch -= CAM_SENS * (y - cy);
+        // dx/dy = posun mysi od stredu okna za posledni snimek
+        // Yaw  += dx * citlivost  (pohyb doprava zvetsuje yaw)
+        // Pitch -= dy * citlivost (pohyb mysi dolu = zmenseni pitch = koukani dolu)
+        g_camYaw += CAM_SENS * (x - cx);
+        g_camPitch -= CAM_SENS * (y - cy);
 
-    // Omez pitch aby kamera nepresla pres zenith/nadir (jinak by se flip otocila)
-    g_camPitch = glm::clamp(g_camPitch, -89.0f, 89.0f);
+        // Omez pitch aby kamera nepresla pres zenith/nadir (jinak by se flip otocila)
+        g_camPitch = glm::clamp(g_camPitch, -89.0f, 89.0f);
 
-    // Vrat mys na stred okna — dalsi pohyb se zase meri od stredu
-    glutWarpPointer(cx, cy);
-    glutPostRedisplay();
+        // Vrat mys na stred okna — dalsi pohyb se zase meri od stredu
+        glutWarpPointer(cx, cy);
+        glutPostRedisplay();
+    }
 }
 
 // ================================================================================

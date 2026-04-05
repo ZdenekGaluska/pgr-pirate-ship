@@ -4,7 +4,7 @@
  * \author  vaclaon3
  * \brief   Implementace FPS kamery.
  */
-//----------------------------------------------------------------------------------------
+ //----------------------------------------------------------------------------------------
 
 #include "camera.h"
 
@@ -33,17 +33,30 @@ glm::vec3 getCamFront() {
 void updateCamera() {
     glm::vec3 front = getCamFront();
 
+    glm::vec3 shipFront = glm::normalize(glm::vec3(
+        cos(glm::radians(g_shipYaw)),   // x
+        0.0f,                            // y — loď nemá pitch
+        sin(glm::radians(g_shipYaw))    // z
+    ));
+
     // right = vektor doprava = krizovy soucin (front x globalUp)
     // Normalizujeme protoze front neni vzdy kolmy na (0,1,0) (pri pitch != 0).
     glm::vec3 right = glm::normalize(glm::cross(front, glm::vec3(0.0f, 1.0f, 0.0f)));
 
-    // Pohyb ve smeru pohledu (W/S) a do strany (A/D)
-    if (g_keys['w']) g_camPos += CAM_SPEED * front;
-    if (g_keys['s']) g_camPos -= CAM_SPEED * front;
-    if (g_keys['a']) g_camPos -= CAM_SPEED * right;
-    if (g_keys['d']) g_camPos += CAM_SPEED * right;
+    if(g_cameraMode == CAM_FREE){
+        // Pohyb ve smeru pohledu (W/S) a do strany (A/D)
+        if (g_keys['w']) g_camPos += CAM_SPEED * front;
+        if (g_keys['s']) g_camPos -= CAM_SPEED * front;
+        if (g_keys['a']) g_camPos -= CAM_SPEED * right;
+        if (g_keys['d']) g_camPos += CAM_SPEED * right;
 
-    // Pohyb po ose Y — nezavisle na smeru pohledu (jako "fly mode")
-    if (g_keys[' ']) g_camPos.y += CAM_SPEED;   // Space = nahoru
-    if (g_keys['e']) g_camPos.y -= CAM_SPEED;   // E     = dolu
+        // Pohyb po ose Y — nezavisle na smeru pohledu (jako "fly mode")
+        if (g_keys[' ']) g_camPos.y += CAM_SPEED;   // Space = nahoru
+        if (g_keys['e']) g_camPos.y -= CAM_SPEED;   // E     = dolu
+    }
+    else if (g_cameraMode == CAM_SHIP) {
+        if (g_keys['w']) g_shipPos += SHIP_SPEED * shipFront;
+        if (g_keys['a']) g_shipYaw -= SHIP_TURN_SPEED;
+        if (g_keys['d']) g_shipYaw += SHIP_TURN_SPEED;
+    }
 }
