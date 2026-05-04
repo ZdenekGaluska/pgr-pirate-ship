@@ -1,0 +1,44 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="algorithms.cpp" />
+    <ClCompile Include="callbacks.cpp" />
+    <ClCompile Include="camera.cpp" />
+    <ClCompile Include="globals.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="mesh_utils.cpp" />
+    <ClCompile Include="physics.cpp" />
+    <ClCompile Include="volcano.cpp" />
+    <ClCompile Include="skybox\skybox.cpp">
+      <Filter>skybox</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="algorithms.h" />
+    <ClInclude Include="callbacks.h" />
+    <ClInclude Include="camera.h" />
+    <ClInclude Include="globals.h" />
+    <ClInclude Include="mesh_utils.h" />
+    <ClInclude Include="physics.h" />
+    <ClInclude Include="volcano.h" />
+    <ClInclude Include="skybox\skybox.h">
+      <Filter>skybox</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="README.txt" />
+    <None Include="simple-fs.glsl" />
+    <None Include="simple-vs.glsl" />
+    <None Include="skybox-vs.glsl">
+      <Filter>skybox</Filter>
+    </None>
+    <None Include="skybox-fs.glsl">
+      <Filter>skybox</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="skybox">
+      <UniqueIdentifier>{68658197-0c5e-4318-b7c9-662dba540c8a}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

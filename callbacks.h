@@ -26,6 +26,11 @@ namespace galuszde {
     /// @return true on success, false if shader compilation or linking fails.
     bool initShaders();
 
+    /// @brief  Compiles and links the skybox shader program, caches uniform locations.
+    ///         Must be called after pgr::initialize() and before any draw call.
+    /// @return true on success, false if compilation or linking fails.
+    bool initSkyboxShader();
+
     // GLUT callbacks -- registered in main.cpp, called by glutMainLoop()
 
     /// @brief  Called by GLUT whenever the window needs to be redrawn.

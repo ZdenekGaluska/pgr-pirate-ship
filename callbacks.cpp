@@ -57,6 +57,37 @@ namespace galuszde {
         return true;
     }
 
+    // initSkyboxShader()
+
+    /// @brief  Compiles and links the dedicated skybox shader program and caches
+    ///         its uniform locations. Separate from the main shader because the
+    ///         skybox uses a samplerCube and a stripped view matrix.
+    /// @return true on success, false if compilation or linking fails.
+    bool initSkyboxShader() {
+        GLuint shaderList[] = {
+            pgr::createShaderFromFile(GL_VERTEX_SHADER,   "skybox/skybox-vs.glsl"),
+            pgr::createShaderFromFile(GL_FRAGMENT_SHADER, "skybox/skybox-fs.glsl"),
+            0
+        };
+        g_skyboxShader.program = pgr::createProgram(shaderList);
+        if (!g_skyboxShader.program) {
+            std::cerr << "Skybox shader compilation or linking failed." << std::endl;
+            return false;
+        }
+
+        glUseProgram(g_skyboxShader.program);
+
+        g_skyboxShader.mProjection = glGetUniformLocation(g_skyboxShader.program, "u_projection");
+        g_skyboxShader.mView = glGetUniformLocation(g_skyboxShader.program, "u_view");
+        g_skyboxShader.uSkybox = glGetUniformLocation(g_skyboxShader.program, "u_skybox");
+
+        // Bind skybox sampler to texture unit 0 -- does not change at runtime
+        glUniform1i(g_skyboxShader.uSkybox, 0);
+
+        glUseProgram(0);
+        return true;
+    }
+
     // drawShip()
 
     /// @brief  Builds the ship model matrix and draws all sub-meshes.
@@ -76,6 +107,7 @@ namespace galuszde {
         glUniformMatrix4fv(g_shaderLocation.mPVM, 1, GL_FALSE, glm::value_ptr(PVM));
         glUniformMatrix4fv(g_shaderLocation.mModel, 1, GL_FALSE, glm::value_ptr(model));
 
+ 
         for (const auto& mesh : g_meshes) {
             glUniform3fv(g_shaderLocation.vDiffuse, 1, glm::value_ptr(mesh.diffuseColor));
             glActiveTexture(GL_TEXTURE0);
@@ -138,6 +170,34 @@ namespace galuszde {
         glDrawElements(GL_TRIANGLES, g_volcano.numTriangles * 3, GL_UNSIGNED_INT, nullptr);
     }
 
+    // drawSkybox()
+
+    /// @brief  Draws the skybox cube around the scene using the dedicated skybox shader.
+    ///         Must be drawn LAST among opaque objects so the depth trick works correctly:
+    ///         depth function is temporarily relaxed to GL_LEQUAL because the skybox
+    ///         forces z/w = 1.0 in the vertex shader, which would fail GL_LESS.
+    /// @param  view  View matrix from onDisplay() (translation is stripped in the vertex shader).
+    /// @param  proj  Projection matrix from onDisplay().
+    static void drawSkybox(const glm::mat4& view, const glm::mat4& proj) {
+        // Switch to skybox shader -- different program than the main scene shader
+        glUseProgram(g_skyboxShader.program);
+        glUniformMatrix4fv(g_skyboxShader.mProjection, 1, GL_FALSE, glm::value_ptr(proj));
+        glUniformMatrix4fv(g_skyboxShader.mView, 1, GL_FALSE, glm::value_ptr(view));
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, g_skybox.cubemapTexture);
+
+        // Relax depth test: skybox writes z/w = 1.0, which equals the cleared depth buffer.
+        // GL_LESS would discard it; GL_LEQUAL lets it through.
+        glDepthFunc(GL_LEQUAL);
+        glBindVertexArray(g_skybox.vao);
+        glDrawArrays(GL_TRIANGLES, 0, 36);   // 36 vertices, no index buffer
+        glBindVertexArray(0);
+        glDepthFunc(GL_LESS);   // restore default -- must not affect subsequent draws
+
+        glUseProgram(0);
+    }
+
     // onDisplay()
 
     void onDisplay() {
@@ -178,6 +238,8 @@ namespace galuszde {
 
         drawShip(view, proj);
         drawVolcano(view, proj);
+        drawSkybox(view, proj);
+        glUseProgram(g_shaderLocation.program);
         drawWater(view, proj, time);   // water last -- opaque but drawn after solid objects
 
         glBindVertexArray(0);

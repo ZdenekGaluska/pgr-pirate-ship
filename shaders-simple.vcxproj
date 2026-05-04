@@ -89,12 +89,15 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="mesh_utils.cpp" />
     <ClCompile Include="physics.cpp" />
+    <ClCompile Include="skybox\skybox.cpp" />
     <ClCompile Include="volcano.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="README.txt" />
     <None Include="simple-fs.glsl" />
     <None Include="simple-vs.glsl" />
+    <None Include="skybox-fs.glsl" />
+    <None Include="skybox-vs.glsl" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="algorithms.h" />
@@ -103,6 +106,7 @@
     <ClInclude Include="globals.h" />
     <ClInclude Include="mesh_utils.h" />
     <ClInclude Include="physics.h" />
+    <ClInclude Include="skybox\skybox.h" />
     <ClInclude Include="volcano.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

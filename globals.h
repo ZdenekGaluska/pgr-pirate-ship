@@ -110,6 +110,21 @@ struct ShaderLocations {
     GLint  fTime = -1;   // uniform "u_time"        = current elapsed time in seconds
 };
 
+/// Cached uniform locations for the skybox shader program.
+struct SkyboxShaderLocations {
+    GLuint program = 0;
+    GLint  mProjection = -1;   ///< uniform "u_projection" = projection matrix
+    GLint  mView = -1;   ///< uniform "u_view"       = view matrix (translation stripped in VS)
+    GLint  uSkybox = -1;   ///< uniform "u_skybox"     = cubemap sampler (texture unit 0)
+};
+
+/// GPU resources for the skybox unit cube and its cubemap texture.
+struct SkyboxData {
+    GLuint vao = 0;   ///< VAO recording the cube's vertex layout
+    GLuint vbo = 0;   ///< VBO with 36 position-only vertices
+    GLuint cubemapTexture = 0;   ///< OpenGL cubemap texture ID (6 faces)
+};
+
 // --- Global variable declarations ---
 // "extern" = the variable exists but is defined in globals.cpp.
 // Every file that includes globals.h shares the same instance.
@@ -118,6 +133,9 @@ extern std::vector<Mesh> g_meshes;          // all sub-meshes of the loaded ship
 extern WaterGrid          g_water;           // ocean surface grid
 extern Mesh               g_volcano;         // hardcoded volcano mesh (volcano.cpp)
 extern ShaderLocations    g_shaderLocation;  // cached uniform locations for the active shader
+
+extern SkyboxShaderLocations g_skyboxShader;
+extern SkyboxData            g_skybox;
 
 // --- Camera (FPS model: position + yaw/pitch) ---
 extern glm::vec3 g_camPos;    // camera position in world space

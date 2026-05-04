@@ -16,6 +16,9 @@ WaterGrid         g_water;           // populated during init() via generateWate
 Mesh              g_volcano;         // populated during init() via initVolcano()
 ShaderLocations   g_shaderLocation;  // populated during init() via glGetUniformLocation()
 
+SkyboxShaderLocations g_skyboxShader;   // populated during init() via initSkyboxShader()
+SkyboxData            g_skybox;         // populated during init() via initSkybox()
+
 // --- Camera ---
 // Default position: slightly above water, pulled back from the ship
 glm::vec3 g_camPos = glm::vec3(0.0f, 1.5f, 5.0f);
@@ -46,4 +49,4 @@ const glm::vec3 LIGHT_DIR = glm::normalize(glm::vec3(1.0f, 2.0f, 1.0f));
 
 // Fixed world position for the hardcoded volcano mesh.
 // 30 units forward, -1 below sea level (base sits in water), -20 to the side.
-const glm::vec3 VOLCANO_POS = glm::vec3(30.0f, -1.0f, -20.0f);
+const glm::vec3 VOLCANO_POS = glm::vec3(30.0f, -2.0f, -20.0f);

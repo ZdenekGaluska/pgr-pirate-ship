@@ -239,8 +239,7 @@ namespace galuszde {
         const aiScene* scene = importer.ReadFile(MODEL_PATH,
             aiProcess_Triangulate |             // decompose polygons into triangles
             aiProcess_PreTransformVertices |    // flatten node hierarchy into one coordinate system
-            aiProcess_GenSmoothNormals |        // generate smooth normals for Phong shading
-            aiProcess_JoinIdenticalVertices     // merge duplicate vertices to reduce VBO size
+            aiProcess_GenSmoothNormals         // generate smooth normals for Phong shading
         );
 
         if (!scene) {
@@ -248,6 +247,9 @@ namespace galuszde {
             return false;
         }
         std::cout << "Model loaded: " << scene->mNumMeshes << " meshes." << std::endl;
+        std::cout << "Model loaded: " << scene->mNumMeshes << " meshes." << std::endl;
+        std::cout << "Materials: " << scene->mNumMaterials << std::endl;
+        std::cout << "Textures: " << scene->mNumTextures << std::endl;
 
         // Upload each sub-mesh (hull, sails, mast, ...) to the GPU as its own VAO
         for (unsigned int i = 0; i < scene->mNumMeshes; ++i) {

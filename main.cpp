@@ -21,6 +21,7 @@
 #include "callbacks.h"
 #include "mesh_utils.h"
 #include "volcano.h"
+#include "skybox/skybox.h"
 
 namespace galuszde {
 
@@ -49,6 +50,12 @@ namespace galuszde {
         glDeleteBuffers(1, &g_volcano.vbo);
         glDeleteBuffers(1, &g_volcano.ibo);
         glDeleteTextures(1, &g_volcano.texture);
+
+        // Release skybox GPU resources
+        glDeleteVertexArrays(1, &g_skybox.vao);
+        glDeleteBuffers(1, &g_skybox.vbo);
+        glDeleteTextures(1, &g_skybox.cubemapTexture);
+        pgr::deleteProgramAndShaders(g_skyboxShader.program);
     }
 
     /// @brief  Initializes the scene by delegating to subsystem init functions.
@@ -62,6 +69,8 @@ namespace galuszde {
         if (!initWater())      return false;   // grid generation + texture
         if (!initVolcano())    return false;   // hardcoded mesh + GPU upload
         if (!initShaders())    return false;   // compile, link, cache uniforms
+        if (!initSkyboxShader())  return false;
+        if (!initSkybox())        return false;
 
         glClearColor(0.1f, 0.18f, 0.28f, 1.0f);   // background color (dark ocean blue)
         glEnable(GL_DEPTH_TEST);                    // Z-buffer: only draw what is in front
