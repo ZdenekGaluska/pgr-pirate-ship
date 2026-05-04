@@ -2,14 +2,15 @@
 //----------------------------------------------------------------------------------------
 /**
  * \file    globals.h
- * \author  vaclaon3
- * \brief   Sdilene datove typy, konstanty a deklarace globalnich promennych.
+ * \author  galuszde
+ * \note    Code comments generated with AI assistance (Claude, Anthropic).
+ * \brief   Shared data types, constants, and global variable declarations.
  *
- * Tento soubor includuje kazdy jiny .cpp soubor projektu.
- * Pravidla:
- *   - Definice promennych jsou v globals.cpp (tady jen "extern" deklarace).
- *   - Konstanty (const) jsou tady primo — kompilator je inlinuje, zadny ODR problem.
- *   - Struktury jsou tady — definice typu neni definice promenne, tedy OK.
+ * This file is included by every other .cpp file in the project.
+ * Rules:
+ *   - Variable definitions live in globals.cpp (only "extern" declarations here).
+ *   - Constants (const) are defined here directly -- the compiler inlines them, no ODR issue.
+ *   - Structs are defined here -- a type definition is not a variable definition, so OK.
  */
  //----------------------------------------------------------------------------------------
 
@@ -17,119 +18,132 @@
 #include <vector>
 #include <iostream>
 
-// ================================================================================
-// KONSTANTY OKNA A KAMERY
-// ================================================================================
+// --- Window and camera constants ---
 
 const int   WIN_WIDTH = 1920;
 const int   WIN_HEIGHT = 1080;
-const char* const WIN_TITLE = "Piratska lod - vaclaon3";
+const char* const WIN_TITLE = "Piratska lod - galuszde";
 
-const float CAM_SPEED = 0.15f;   // rychlost pohybu kamery (jednotky/snimek)
-const float CAM_SENS = 0.1f;    // citlivost mysi (stupne/pixel)
-const float ZOOM_SPEED = 0.8f;    // rychlost zoomu pri scrollovani
+const float CAM_SPEED = 0.15f;   // camera movement speed (world units per frame)
+const float CAM_SENS = 0.1f;    // mouse sensitivity (degrees per pixel)
+const float ZOOM_SPEED = 0.8f;    // zoom speed on scroll wheel
 
-const float SHIP_SPEED = 0.08f;
+const float SHIP_SPEED = 0.1f;
 const float SHIP_TURN_SPEED = 0.30f;
 
-// ================================================================================
-// KONSTANTY MODELU
-// ================================================================================
+const float SHIP_SLOPE_MULT = 1.0f;    // how much wave slope increases the target speed
+const float SHIP_MOD_FACTOR = 0.5f;    // how fast g_shipSpeedMod lerps toward the target speed
+const float SHIP_SPEED_SCALE = 0.04f;   // global speed scalar -- keeps all ship movement values small
 
-/// Cesta k GLTF modelu lode, relativne k Working Directory projektu.
-/// Working Directory se nastavuje ve VS: Project -> Properties -> Debugging -> Working Directory = $(ProjectDir)
+
+// --- Ocean constants ---
+const int   OCEAN_GRID_DENSITY = 1024;   // Number of vertices per grid side.
+const float OCEAN_SIZE = 240.0f; // World-space extent of the ocean grid (XZ).
+
+// --- Model constants ---
+
+/// Path to the ship GLTF model, relative to the project Working Directory.
+/// Set Working Directory in VS: Project -> Properties -> Debugging -> Working Directory = $(ProjectDir)
 const char* const MODEL_PATH = "pirate_ship/scene.gltf";
 
-// ================================================================================
-// DATOVE TYPY
-// ================================================================================
+// --- Volcano world position ---
+// Placed 30 units ahead and 20 units to the right of spawn so it is
+// visible from the default camera position but does not block the ship.
+extern const glm::vec3 VOLCANO_POS;
+
+// --- Data types ---
 
 /**
- * Mesh = jeden sub-mesh nacteneho 3D modelu na GPU.
+ * Mesh = one sub-mesh of a loaded 3D model, resident on the GPU.
  *
- * Model lode se sklada z vice meshu (trup, stezne, vlajka, ...),
- * kazdy ma vlastni VAO/VBO/IBO a materialovou barvu.
+ * The ship model consists of multiple meshes (hull, masts, sails, flag, ...),
+ * each with its own VAO/VBO/IBO and material color.
  *
- * VAO (Vertex Array Object)  = zapamatuje si layout atributu (kde jsou pozice, normaly, UV)
- * VBO (Vertex Buffer Object) = buffer s daty vrcholu na GPU
- * IBO (Index Buffer Object)  = buffer s indexy trojuhelniku na GPU
+ * VAO (Vertex Array Object)  = remembers attribute layout (where positions, normals, UVs are)
+ * VBO (Vertex Buffer Object) = buffer with vertex data on the GPU
+ * IBO (Index Buffer Object)  = buffer with triangle indices on the GPU
  */
 struct Mesh {
     GLuint       vao = 0;
     GLuint       vbo = 0;
     GLuint       ibo = 0;
     unsigned int numTriangles = 0;
-    glm::vec3    diffuseColor = glm::vec3(0.8f);  // zakladni barva materialu
-    GLuint       texture = 0;                 // ID diffuse textury, 0 = zadna textura
+    glm::vec3    diffuseColor = glm::vec3(0.8f);   // base material color
+    GLuint       texture = 0;                       // diffuse texture ID, 0 = no texture
 };
 
-// 
+/// Active camera mode.
 enum CameraMode {
-    CAM_FREE = 0,
-    CAM_SHIP = 1
+    CAM_FREE = 0,   // free-fly FPS camera
+    CAM_SHIP = 1    // third-person camera following the ship
 };
 
 /**
- * WaterGrid = plocha vody reprezentovana pravidelnou mrizkou trojuhelniku.
+ * WaterGrid = ocean surface represented as a regular triangle grid.
  *
- * Vrcholy mrizky jsou generovany v CPU (generateWaterGrid), nahrane do GPU.
- * Shader pak vrcholy animuje (Gerstner waves).
+ * Grid vertices are generated on the CPU (generateWaterGrid) and uploaded to the GPU.
+ * The vertex shader animates them each frame using Gerstner wave equations.
  */
 struct WaterGrid {
     GLuint       vao = 0;
     GLuint       vbo = 0;
     GLuint       ibo = 0;
     unsigned int numIndices = 0;
-    GLuint       texture = 0;   // diffuse textura vody
+    GLuint       texture = 0;   // diffuse water texture
 };
 
 /**
- * ShaderLocations = ulozene lokace uniform promennych shaderu.
+ * ShaderLocations = cached uniform variable locations for the active shader program.
  *
- * glGetUniformLocation() je pomale volani — zavolame ho jednou pri init()
- * a vysledky si ulozime sem. Pri kazdem draw callu pak pouzijeme ulozene hodnoty
- * misto opakovaneho vyhledavani.
+ * glGetUniformLocation() is a slow call -- we call it once at startup and store
+ * the integer slot IDs here. Every draw call then uses the cached values
+ * instead of looking them up again.
  */
 struct ShaderLocations {
     GLuint program = 0;
-    GLint  mPVM = -1;   // uniform "mPVM"          = projekce * view * model
-    GLint  mModel = -1;   // uniform "mModel"        = model matice (pro transformaci normal)
-    GLint  vDiffuse = -1;   // uniform "vDiffuse"      = barva materialu
-    GLint  vLightDir = -1;   // uniform "vLightDir"     = smer svetla (normalizovany vektor)
-    GLint  vCameraPos = -1;   // uniform "vCameraPos"    = pozice kamery (pro specular highlight)
-    GLint  fWaterUVScale = -1;  // uniform "uWaterUVScale" = mierka UV pro vodu z world coords
-    GLint  fTime = -1;   // uniform "u_time"        = aktualni cas v sekundach
+    GLint  mPVM = -1;   // uniform "mPVM"          = projection * view * model
+    GLint  mModel = -1;   // uniform "mModel"        = model matrix (for normal transformation)
+    GLint  vDiffuse = -1;   // uniform "vDiffuse"      = material color
+    GLint  vLightDir = -1;   // uniform "vLightDir"     = light direction (normalized vector)
+    GLint  vCameraPos = -1;   // uniform "vCameraPos"    = camera position (for specular highlight)
+    GLint  fWaterUVScale = -1;  // uniform "uWaterUVScale" = UV scale for world-space water tiling
+    GLint  fTime = -1;   // uniform "u_time"        = current elapsed time in seconds
 };
 
-// ================================================================================
-// DEKLARACE GLOBALNICH PROMENNYCH
-// "extern" = promenna existuje, ale je definovana v globals.cpp.
-// Kazdy soubor co includuje globals.h vidi tyto promenne.
-// ================================================================================
+// --- Global variable declarations ---
+// "extern" = the variable exists but is defined in globals.cpp.
+// Every file that includes globals.h shares the same instance.
 
-extern std::vector<Mesh> g_meshes;   // vsechny sub-mese nacteneho modelu lode
-extern WaterGrid          g_water;   // mrizka vody
-extern ShaderLocations    shdr;      // lokace uniform promennych aktivniho shaderu
+extern std::vector<Mesh> g_meshes;          // all sub-meshes of the loaded ship model
+extern WaterGrid          g_water;           // ocean surface grid
+extern Mesh               g_volcano;         // hardcoded volcano mesh (volcano.cpp)
+extern ShaderLocations    g_shaderLocation;  // cached uniform locations for the active shader
 
-// --- Kamera (FPS model: pozice + yaw/pitch) ---
-extern glm::vec3 g_camPos;    // pozice kamery ve world space
-extern float     g_camYaw;    // rotace doleva/doprava (kolem osy Y), stupne
-extern float     g_camPitch;  // rotace nahoru/dolu   (kolem osy X), stupne
+// --- Camera (FPS model: position + yaw/pitch) ---
+extern glm::vec3 g_camPos;    // camera position in world space
+extern float     g_camYaw;    // left/right rotation around Y axis, degrees
+extern float     g_camPitch;  // up/down rotation around X axis, degrees
 
-// --- Stav klaves ---
-// Pole 256 hodnot, index = ASCII kod klavesy, true = klavesa je stisknuta.
-// Pohyb kamery se pocita v onTimer(), ne primo v onKeyDown() — tak je plynuly.
+// --- Key state ---
+// Array of 256 booleans, index = ASCII key code, true = key is currently held.
+// Camera movement is computed in onTimer(), not directly in onKeyDown() -- keeps it frame-rate independent.
 extern bool g_keys[256];
 
-// --- Stav lode ---
-extern glm::vec3 g_shipPos;      // XZ pozice lode ve world space (Y se pocita z vln)
-extern float     g_shipY;        // aktualni vyska lode — pomalu lerp-uje k vysce vlny
-extern glm::vec3 g_shipNormal;   // aktualni normala pod lodi — pomalu lerp-uje k normale vlny
-extern float     g_shipYaw;
+// --- Ship state ---
+extern glm::vec3 g_shipPos;      // ship XZ position in world space (Y is derived from waves)
+extern float     g_shipY;        // current ship height -- lerps toward the wave height each frame
+extern glm::vec3 g_shipNormal;   // current surface normal under the ship -- lerps toward the wave normal
+extern float     g_shipYaw;      // ship heading in degrees (rotates around Y axis)
+extern float     g_shipSpeedMod; // current ship speed -- lerps toward target speed each frame
 
-// --- Stav kamery
+// Pre-computed ship rotation -- written by updateShip(), read by onDisplay().
+// Separation of physics and rendering: onDisplay() must never compute state, only read it.
+extern glm::vec3 g_shipRotAxis;    // rotation axis derived from g_shipNormal via cross(up, normal)
+extern float     g_shipRotAngle;   // rotation angle in radians derived from g_shipNormal via atan2
+
+// --- Camera mode ---
 extern CameraMode g_cameraMode;
 
-// --- Svetlo ---
-// Pevny smer slunce (normalizovany unit vektor, definovano v globals.cpp).
+// --- Lighting ---
+// Fixed sun direction (normalized unit vector, defined in globals.cpp).
 extern const glm::vec3 LIGHT_DIR;

@@ -2,149 +2,111 @@
 /**
  * \file    main.cpp
  * \author  galuszde
- * \brief   Vstupni bod programu. Inicializace GLUT, OpenGL a sceny. Spusteni hlavni smycky.
+ * \note    Code comments generated with AI assistance (Claude, Anthropic).
+ * \brief   Program entry point. Initializes GLUT, OpenGL context, and scene.
+ *          Registers GLUT callbacks and starts the main event loop.
  *
- * Poradi inicializace je dulezite:
- *   1. glutInit()           — inicializuje windowing system
- *   2. glutCreateWindow()   — vytvori OpenGL kontext
- *   3. pgr::initialize()    — inicializuje GLEW (extensions) — MUSI byt po CreateWindow!
- *   4. init()               — nase inicializace (shadery, modely, ...) — az po pgr::initialize!
- *   5. glutMainLoop()       — spusti smycku eventu (nikdy se nevrati)
+ *   1. glutInit()           -- initializes the windowing system
+ *   2. glutCreateWindow()   -- creates the OpenGL context on the GPU
+ *   3. pgr::initialize()    -- loads OpenGL function pointers via gl_core_4_4 loader,
+ *                              calls ilInit() for DevIL texture loading
+ *                              (MUST be after glutCreateWindow)
+ *   4. init()               -- loads models, shaders, scene
+ *                              (MUST be after pgr::initialize)
+ *   5. glutMainLoop()       -- starts the event loop (never returns)
  */
-//----------------------------------------------------------------------------------------
+ //----------------------------------------------------------------------------------------
 
 #include "globals.h"
 #include "callbacks.h"
 #include "mesh_utils.h"
+#include "volcano.h"
 
-// ================================================================================
-// init() — inicializace sceny
-//
-// Vola se jednou. Nacte model, shadery, nastavi OpenGL stav.
-// Vraci false pokud neco selze — program se pak ukonci s chybou.
-// ================================================================================
+namespace galuszde {
 
-bool init() {
-    std::cerr << "Inicializace sceny..." << std::endl;
+    /// @brief  Releases all GPU resources before the OpenGL context is destroyed.
+    ///         Called automatically by GLUT when the window is closed.
+    void finalize() {
+        // Release shader program and attached shaders
+        pgr::deleteProgramAndShaders(g_shaderLocation.program);
 
-    // -----------------------------------------------------------------------
-    // Nacist model lode pres Assimp
-    // -----------------------------------------------------------------------
-    Assimp::Importer imp;
-    const aiScene* scn = imp.ReadFile(MODEL_PATH,
-        aiProcess_Triangulate          |   // rozloz polygony na trojuhelniky
-        aiProcess_PreTransformVertices |   // sjednotit hierarchii nodu do jednoho souradnicoveho systemu
-        aiProcess_GenSmoothNormals     |   // vygenerovat hladke normaly (pro Phong osvelteni)
-        aiProcess_JoinIdenticalVertices    // spojit duplicitni vrcholy (mensi VBO)
-    );
+        // Release ship mesh GPU resources
+        for (auto& mesh : g_meshes) {
+            glDeleteVertexArrays(1, &mesh.vao);
+            glDeleteBuffers(1, &mesh.vbo);
+            glDeleteBuffers(1, &mesh.ibo);
+            glDeleteTextures(1, &mesh.texture);
+        }
 
-    if (!scn) {
-        std::cerr << "Assimp error: " << imp.GetErrorString() << std::endl;
-        return false;
-    }
-    std::cout << "Model nacten: " << scn->mNumMeshes << " meshu." << std::endl;
+        // Release water grid GPU resources
+        glDeleteVertexArrays(1, &g_water.vao);
+        glDeleteBuffers(1, &g_water.vbo);
+        glDeleteBuffers(1, &g_water.ibo);
+        glDeleteTextures(1, &g_water.texture);
 
-    // Nahrat kazdy sub-mesh modelu na GPU
-    for (unsigned i = 0; i < scn->mNumMeshes; ++i) {
-        g_meshes.push_back(uploadMesh(
-            scn->mMeshes[i],
-            scn->mMaterials[scn->mMeshes[i]->mMaterialIndex]
-        ));
+        // Release volcano GPU resources
+        glDeleteVertexArrays(1, &g_volcano.vao);
+        glDeleteBuffers(1, &g_volcano.vbo);
+        glDeleteBuffers(1, &g_volcano.ibo);
+        glDeleteTextures(1, &g_volcano.texture);
     }
 
-    // -----------------------------------------------------------------------
-    // Vygenerovat mrizku vody
-    // -----------------------------------------------------------------------
-    generateWaterGrid(g_water);
-    
-    // Nacist texturu vody ze souboru do GPU
-    // Cesta je relativni k Working Directory (koren projektu vedle .sln)
-    g_water.texture = loadTexture("water.png");
-    if (!g_water.texture)
-        std::cerr << "Varovani: textura vody nenalezena, voda bude cerna." << std::endl;
+    /// @brief  Initializes the scene by delegating to subsystem init functions.
+    ///         Each subsystem (model, water, volcano, shaders) owns its own initialization logic.
+    ///         Sets base OpenGL render state after all subsystems are ready.
+    /// @return true on success, false if any subsystem initialization fails.
+    bool init() {
+        std::cout << "Initializing scene..." << std::endl;
 
+        if (!loadShipModel())  return false;   // Assimp load + GPU upload
+        if (!initWater())      return false;   // grid generation + texture
+        if (!initVolcano())    return false;   // hardcoded mesh + GPU upload
+        if (!initShaders())    return false;   // compile, link, cache uniforms
 
-    // -----------------------------------------------------------------------
-    // Nacist a slinkovat shadery
-    // -----------------------------------------------------------------------
-    GLuint shaders[] = {
-        pgr::createShaderFromFile(GL_VERTEX_SHADER,   "simple-vs.glsl"),
-        pgr::createShaderFromFile(GL_FRAGMENT_SHADER, "simple-fs.glsl"),
-        0   // sentinel — pgr::createProgram() cte pole az po tento nulovy prvek
-    };
-    shdr.program = pgr::createProgram(shaders);
-    if (!shdr.program) {
-        std::cerr << "Chyba pri kompilaci shaderu." << std::endl;
-        return false;
+        glClearColor(0.1f, 0.18f, 0.28f, 1.0f);   // background color (dark ocean blue)
+        glEnable(GL_DEPTH_TEST);                    // Z-buffer: only draw what is in front
+
+        std::cout << "Scene initialized successfully." << std::endl;
+        return true;
     }
 
-    // -----------------------------------------------------------------------
-    // Ulozit lokace uniform promennych shaderu
-    // -----------------------------------------------------------------------
-    glUseProgram(shdr.program);
+} // namespace galuszde
 
-    // Texture unit 0 je vychozi — reckneme shaderu aby cetl z jednotky 0
-    GLint uTexture = glGetUniformLocation(shdr.program, "uTexture");
-    glUniform1i(uTexture, 0);
-
-    shdr.mPVM       = glGetUniformLocation(shdr.program, "mPVM");
-    shdr.mModel     = glGetUniformLocation(shdr.program, "mModel");
-    shdr.vDiffuse   = glGetUniformLocation(shdr.program, "vDiffuse");
-    shdr.vLightDir  = glGetUniformLocation(shdr.program, "vLightDir");
-    shdr.vCameraPos = glGetUniformLocation(shdr.program, "vCameraPos");
-    shdr.fWaterUVScale = glGetUniformLocation(shdr.program, "uWaterUVScale");
-    shdr.fTime = glGetUniformLocation(shdr.program, "u_time");
-
-    // Poslat pocatecni hodnotu 0.0 — animace se spusti az v dalsim kroku
-    glUniform1f(shdr.fTime, 0.0f);
-
-    glUniform1f(shdr.fWaterUVScale, 0.0f);
-    glUseProgram(0);
-
-    // -----------------------------------------------------------------------
-    // Zakladni OpenGL nastaveni
-    // -----------------------------------------------------------------------
-    glClearColor(0.1f, 0.18f, 0.28f, 1.0f);   // barva pozadi (tmava modra = ocean)
-    glEnable(GL_DEPTH_TEST);                    // Z-buffer: kreslit jen co je vpredu
-
-    std::cerr << "Inicializace OK." << std::endl;
-    return true;
-}
-
-// ================================================================================
-// main() — vstupni bod programu
-// ================================================================================
-
+/// @brief  Program entry point. Creates GLUT window, registers all callbacks,
+///         initializes PGR framework and scene, then enters the GLUT event loop.
+/// @param  argc  Argument count passed by the operating system.
+/// @param  argv  Argument values passed by the operating system.
 int main(int argc, char* argv[]) {
-    // --- Inicializace GLUT (windowing system) ---
+    // --- GLUT windowing system init ---
     glutInit(&argc, argv);
     glutInitContextVersion(pgr::OGL_VER_MAJOR, pgr::OGL_VER_MINOR);
     glutInitContextFlags(GLUT_FORWARD_COMPATIBLE);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize(WIN_WIDTH, WIN_HEIGHT);
     glutCreateWindow(WIN_TITLE);
-    glutSetCursor(GLUT_CURSOR_NONE);   // skryt kurzor mysi
+    glutSetCursor(GLUT_CURSOR_NONE);   // hide cursor
 
-    // --- Registrace callbacku ---
-    glutDisplayFunc(onDisplay);
-    glutReshapeFunc(onReshape);
-    glutKeyboardFunc(onKeyDown);
-    glutKeyboardUpFunc(onKeyUp);
-    glutPassiveMotionFunc(onMouseMotion);
-    glutMouseFunc(onMouse);
-    glutTimerFunc(16, onTimer, 0);   // spustit herni smycku (16ms = ~60 FPS)
+    // --- Register GLUT callbacks ---
+    glutDisplayFunc(galuszde::onDisplay);
+    glutReshapeFunc(galuszde::onReshape);
+    glutKeyboardFunc(galuszde::onKeyDown);
+    glutKeyboardUpFunc(galuszde::onKeyUp);
+    glutPassiveMotionFunc(galuszde::onMouseMotion);
+    glutMouseFunc(galuszde::onMouse);
+    glutTimerFunc(16, galuszde::onTimer, 0);   // 16ms ~= 60 FPS game loop
 
-    // --- Inicializace PGR frameworku (GLEW) ---
+    // --- PGR framework init ---
     if (!pgr::initialize(pgr::OGL_VER_MAJOR, pgr::OGL_VER_MINOR))
-        pgr::dieWithError("pgr::initialize() selhalo — nepodporovana verze OpenGL?");
+        pgr::dieWithError("pgr::initialize() failed");
 
-    // --- Inicializace sceny ---
-    if (!init())
-        pgr::dieWithError("init() selhalo — viz chybova hlaseni vyse.");
+    // --- Scene init: models, water, volcano, shaders ---
+    if (!galuszde::init())
+        pgr::dieWithError("init() failed -- see error messages above.");
 
-    // --- Hlavni smycka GLUT ---
-    // Odtud program nikdy nevrati
-    // GLUT vola callbacky registrovane vyse podle eventu.
+    // --- Cleanup callback ---
+    glutCloseFunc(galuszde::finalize);
+
+    // --- GLUT main loop ---
     glutMainLoop();
     return 0;
 }

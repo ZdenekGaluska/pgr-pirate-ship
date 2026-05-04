@@ -2,44 +2,51 @@
 //----------------------------------------------------------------------------------------
 /**
  * \file    camera.h
- * \author  vaclaon3
- * \brief   FPS kamera — vypocet smeru pohledu a pohyb na zaklade vstupu.
+ * \author  galuszde
+ * \note    Code comments generated with AI assistance (Claude, Anthropic).
+ * \brief   FPS camera -- view direction computation and input-driven movement.
  *
- * Kamera je reprezentovana tremi globalnimi promennymi (globals.h):
- *   g_camPos   — pozice ve world space
- *   g_camYaw   — rotace doleva/doprava (stupne)
- *   g_camPitch — rotace nahoru/dolu    (stupne)
+ * The camera is represented by three global variables (globals.h):
+ *   g_camPos   -- position in world space
+ *   g_camYaw   -- left/right rotation (degrees)
+ *   g_camPitch -- up/down rotation (degrees)
  *
- * Tento soubor poskytuje funkce pro praci s kamerou.
- * Vstupni callbacky (onKeyDown, onMouseMotion) meni g_keys / yaw / pitch.
- * Pohyb kamery pocita updateCamera() — vola se z onTimer() jednou za snimek.
+ * Input callbacks (onKeyDown, onMouseMotion) modify g_keys / yaw / pitch.
+ * Camera movement is computed by updateCamera() -- called from onTimer() once per frame.
  */
-//----------------------------------------------------------------------------------------
-
+ //----------------------------------------------------------------------------------------
 #include "globals.h"
 
-/// @brief Vypocita normalizovany smerovy vektor kamery z g_camYaw a g_camPitch.
-/// @return Unit vektor smeru pohledu (delka = 1).
-///
-/// Prevod sfericke souradnice na kartezske:
-///   x = cos(yaw) * cos(pitch)
-///   y = sin(pitch)
-///   z = sin(yaw) * cos(pitch)
-///
-/// Pouziva se pro:
-///   - glm::lookAt() pri vypoctu view matice v onDisplay()
-///   - pohyb WASD (posun ve smeru front a right)
-///   - scroll zoom (posun ve smeru front)
-glm::vec3 getCamFront();
+namespace galuszde {
 
-/// @brief Aktualizuje pozici kamery podle aktualne stisknutych klaves (g_keys[]).
-///
-/// Pocita se z g_keys[] jednou za snimek v onTimer().
-/// Pohyb je tedy plynuly a nezavisi na rychlosti opakovani klavesy v OS.
-///
-/// Klávesy:
-///   W / S — dopredu / dozadu (ve smeru pohledu)
-///   A / D — doleva / doprava (perpendikularne k pohledu)
-///   Space — nahoru (osa Y)
-///   E     — dolu   (osa Y)
-void updateCamera();
+    /// @brief  Computes a normalized view direction vector from g_camYaw and g_camPitch.
+    /// @return Unit vector of the camera's look direction (length = 1).
+    ///
+    /// Spherical to Cartesian conversion:
+    ///   x = cos(yaw) * cos(pitch)
+    ///   y = sin(pitch)
+    ///   z = sin(yaw) * cos(pitch)
+    ///
+    /// Used for:
+    ///   - glm::lookAt() when computing the view matrix in onDisplay()
+    ///   - WASD movement (translate along front and right vectors)
+    ///   - scroll wheel zoom (translate along front vector)
+    glm::vec3 getCamFront();
+
+    /// @brief  Updates camera or ship position based on currently held keys (g_keys[]).
+    ///
+    /// Called once per frame from onTimer().
+    /// Movement is therefore smooth and independent of OS key-repeat rate.
+    ///
+    /// CAM_FREE keys:
+    ///   W / S   -- forward / backward (along view direction)
+    ///   A / D   -- left / right (perpendicular to view direction)
+    ///   Space   -- up (world Y axis)
+    ///   E       -- down (world Y axis)
+    ///
+    /// CAM_SHIP keys:
+    ///   W       -- move ship forward
+    ///   A / D   -- rotate ship left / right
+    void updateCamera();
+
+} // namespace galuszde

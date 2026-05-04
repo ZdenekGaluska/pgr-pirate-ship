@@ -2,45 +2,73 @@
 //----------------------------------------------------------------------------------------
 /**
  * \file    callbacks.h
- * \author  vaclaon3
- * \brief   Deklarace GLUT callbacku.
+ * \author  galuszde
+ * \note    Code comments generated with AI assistance (Claude, Anthropic).
+ * \brief   GLUT callback declarations and scene rendering interface.
  *
- * Tady jsou jen vstupni body z GLUT — kazda funkce zachyti event
- * a zavola prislusny modul (kamera, logika, kresleni...).
+ * GLUT callbacks are the entry points driven by the event loop in glutMainLoop().
+ * Each callback handles one event type and delegates to the appropriate module
+ * (camera, physics, rendering).
  *
- * Registrace techto callbacku se dela v main.cpp pres glutXxxFunc().
- *
- * Signatury jsou pevne dane GLUT API — nelze je menit.
+ * Callback signatures are fixed by the GLUT API -- do not modify parameters.
+ * Registration happens in main.cpp via glutXxxFunc().
  */
-//----------------------------------------------------------------------------------------
-
+ //----------------------------------------------------------------------------------------
 #include "globals.h"
 
-/// Vola GLUT kdyz je treba prekreslit okno.
-/// Pocita view/proj matice, posila uniformy, kreslí vsechny mese.
-void onDisplay();
+namespace galuszde {
 
-/// Vola GLUT pri zmene velikosti okna.
-/// Nastavi viewport (oblast kresleni) na novou velikost.
-void onReshape(int w, int h);
+    // Scene initialization -- called once from main.cpp::init()
 
-/// Vola GLUT pri stisku klavesy (ASCII znaky, mezera, ESC...).
-/// Nastavi g_keys[key] = true; ESC ukonci program.
-void onKeyDown(unsigned char key, int x, int y);
+    /// @brief  Compiles and links the shader program using pgr::createShaderFromFile()
+    ///         and pgr::createProgram(), then caches all uniform locations.
+    ///         Must be called after pgr::initialize() and before any draw call.
+    /// @return true on success, false if shader compilation or linking fails.
+    bool initShaders();
 
-/// Vola GLUT pri uvolneni klavesy.
-/// Nastavi g_keys[key] = false.
-void onKeyUp(unsigned char key, int x, int y);
+    // GLUT callbacks -- registered in main.cpp, called by glutMainLoop()
 
-/// Vola GLUT pri pohybu mysi BEZ stisknuti tlacitka.
-/// Aktualizuje g_camYaw a g_camPitch, vraci mys na stred okna.
-void onMouseMotion(int x, int y);
+    /// @brief  Called by GLUT whenever the window needs to be redrawn.
+    ///         Computes view/projection matrices, draws ship and water, swaps buffers.
+    void onDisplay();
 
-/// Vola GLUT pri kliknuti mysi nebo scrollovani koleckem.
-/// Scroll (button 3/4) = zoom (posun kamery dopredu/dozadu).
-/// Levy klik = v budoucnu color picking pokladu.
-void onMouse(int button, int state, int x, int y);
+    /// @brief  Called by GLUT when the window is resized.
+    ///         Updates the OpenGL viewport to match the new window dimensions.
+    /// @param  newWidth   New window width in pixels.
+    /// @param  newHeight  New window height in pixels.
+    void onReshape(int newWidth, int newHeight);
 
-/// Vola se periodicky (16ms = ~60 FPS) z glutTimerFunc.
-/// Pohybuje kamerou podle g_keys[], pak znovu registruje sam sebe.
-void onTimer(int value);
+    /// @brief  Called by GLUT on printable key press (ASCII, space, ESC).
+    ///         Sets g_keys[key] = true. ESC exits the program cleanly.
+    /// @param  key  ASCII key code of the pressed key.
+    /// @param  x    Mouse X position in pixels at the time of the key press.
+    /// @param  y    Mouse Y position in pixels at the time of the key press.
+    void onKeyDown(unsigned char key, int x, int y);
+
+    /// @brief  Called by GLUT on key release.
+    ///         Sets g_keys[key] = false to stop movement on the next timer tick.
+    /// @param  key  ASCII key code of the released key.
+    /// @param  x    Mouse X position in pixels at the time of the key release.
+    /// @param  y    Mouse Y position in pixels at the time of the key release.
+    void onKeyUp(unsigned char key, int x, int y);
+
+    /// @brief  Called by GLUT on passive mouse movement (no button held).
+    ///         Updates g_camYaw and g_camPitch, warps cursor back to window center.
+    /// @param  x  Current mouse X position in pixels (GLUT origin = top-left).
+    /// @param  y  Current mouse Y position in pixels (GLUT origin = top-left).
+    void onMouseMotion(int x, int y);
+
+    /// @brief  Called by GLUT on mouse button press or scroll wheel event.
+    ///         Scroll wheel (buttons 3/4) zooms the camera forward/backward.
+    /// @param  button  GLUT button ID (GLUT_LEFT_BUTTON, 3 = scroll up, 4 = scroll down).
+    /// @param  state   GLUT_DOWN or GLUT_UP.
+    /// @param  x       Mouse X position in pixels at the time of the click.
+    /// @param  y       Mouse Y position in pixels at the time of the click.
+    void onMouse(int button, int state, int x, int y);
+
+    /// @brief  Periodic game loop tick fired every 16 ms (~60 FPS) via glutTimerFunc.
+    ///         Updates camera and ship state, re-registers itself, requests redraw.
+    /// @param  value  Timer ID passed by glutTimerFunc (unused -- only one timer).
+    void onTimer(int value);
+
+} // namespace galuszde
