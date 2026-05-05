@@ -12,6 +12,10 @@
     <ClCompile Include="skybox\skybox.cpp">
       <Filter>skybox</Filter>
     </ClCompile>
+    <ClCompile Include="obj_loader.cpp" />
+    <ClCompile Include="chest.cpp">
+      <Filter>chest</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="algorithms.h" />
@@ -24,10 +28,13 @@
     <ClInclude Include="skybox\skybox.h">
       <Filter>skybox</Filter>
     </ClInclude>
+    <ClInclude Include="obj_loader.h" />
+    <ClInclude Include="chest.h">
+      <Filter>chest</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="README.txt" />
-    <None Include="simple-fs.glsl" />
     <None Include="simple-vs.glsl" />
     <None Include="skybox-vs.glsl">
       <Filter>skybox</Filter>
@@ -35,10 +42,20 @@
     <None Include="skybox-fs.glsl">
       <Filter>skybox</Filter>
     </None>
+    <None Include="simple-fs.glsl" />
+    <None Include="treasure\chest-vs.glsl">
+      <Filter>chest</Filter>
+    </None>
+    <None Include="treasure\chest-fs.glsl">
+      <Filter>chest</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="skybox">
       <UniqueIdentifier>{68658197-0c5e-4318-b7c9-662dba540c8a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="chest">
+      <UniqueIdentifier>{4734b1c8-6889-44fa-a67a-c95620349b4b}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

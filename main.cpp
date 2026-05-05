@@ -4,16 +4,6 @@
  * \author  galuszde
  * \note    Code comments generated with AI assistance (Claude, Anthropic).
  * \brief   Program entry point. Initializes GLUT, OpenGL context, and scene.
- *          Registers GLUT callbacks and starts the main event loop.
- *
- *   1. glutInit()           -- initializes the windowing system
- *   2. glutCreateWindow()   -- creates the OpenGL context on the GPU
- *   3. pgr::initialize()    -- loads OpenGL function pointers via gl_core_4_4 loader,
- *                              calls ilInit() for DevIL texture loading
- *                              (MUST be after glutCreateWindow)
- *   4. init()               -- loads models, shaders, scene
- *                              (MUST be after pgr::initialize)
- *   5. glutMainLoop()       -- starts the event loop (never returns)
  */
  //----------------------------------------------------------------------------------------
 
@@ -21,17 +11,15 @@
 #include "callbacks.h"
 #include "mesh_utils.h"
 #include "volcano.h"
+#include "chest.h"
 #include "skybox/skybox.h"
 
 namespace galuszde {
 
     /// @brief  Releases all GPU resources before the OpenGL context is destroyed.
-    ///         Called automatically by GLUT when the window is closed.
     void finalize() {
-        // Release shader program and attached shaders
         pgr::deleteProgramAndShaders(g_shaderLocation.program);
 
-        // Release ship mesh GPU resources
         for (auto& mesh : g_meshes) {
             glDeleteVertexArrays(1, &mesh.vao);
             glDeleteBuffers(1, &mesh.vbo);
@@ -39,41 +27,52 @@ namespace galuszde {
             glDeleteTextures(1, &mesh.texture);
         }
 
-        // Release water grid GPU resources
         glDeleteVertexArrays(1, &g_water.vao);
         glDeleteBuffers(1, &g_water.vbo);
         glDeleteBuffers(1, &g_water.ibo);
         glDeleteTextures(1, &g_water.texture);
 
-        // Release volcano GPU resources
         glDeleteVertexArrays(1, &g_volcano.vao);
         glDeleteBuffers(1, &g_volcano.vbo);
         glDeleteBuffers(1, &g_volcano.ibo);
         glDeleteTextures(1, &g_volcano.texture);
 
-        // Release skybox GPU resources
+        // Release chest GPU resources
+        glDeleteVertexArrays(1, &g_chestGeom.vao);
+        glDeleteBuffers(1, &g_chestGeom.vbo);
+        glDeleteBuffers(1, &g_chestGeom.ibo);
+        glDeleteTextures(1, &g_chestGeom.texDiffuse);
+        glDeleteTextures(1, &g_chestGeom.texNormal);
+        pgr::deleteProgramAndShaders(g_chestShader.program);
+
         glDeleteVertexArrays(1, &g_skybox.vao);
         glDeleteBuffers(1, &g_skybox.vbo);
         glDeleteTextures(1, &g_skybox.cubemapTexture);
         pgr::deleteProgramAndShaders(g_skyboxShader.program);
     }
 
-    /// @brief  Initializes the scene by delegating to subsystem init functions.
-    ///         Each subsystem (model, water, volcano, shaders) owns its own initialization logic.
-    ///         Sets base OpenGL render state after all subsystems are ready.
-    /// @return true on success, false if any subsystem initialization fails.
+    /// @brief  Initializes all scene subsystems in dependency order.
+    /// @return true on success, false if any subsystem fails.
     bool init() {
         std::cout << "Initializing scene..." << std::endl;
 
-        if (!loadShipModel())  return false;   // Assimp load + GPU upload
-        if (!initWater())      return false;   // grid generation + texture
-        if (!initVolcano())    return false;   // hardcoded mesh + GPU upload
-        if (!initShaders())    return false;   // compile, link, cache uniforms
-        if (!initSkyboxShader())  return false;
-        if (!initSkybox())        return false;
+        if (!loadShipModel())    return false;
+        if (!initWater())        return false;
+        if (!initVolcano())      return false;
+        if (!initShaders())      return false;
+        if (!initSkyboxShader()) return false;
+        if (!initSkybox())       return false;
 
-        glClearColor(0.1f, 0.18f, 0.28f, 1.0f);   // background color (dark ocean blue)
-        glEnable(GL_DEPTH_TEST);                    // Z-buffer: only draw what is in front
+        // Chest shader must be compiled before initChests() because initChests()
+        // only loads geometry/textures -- the shader is a separate step.
+        if (!initChestShader())  return false;
+
+        // initChests() reads config.txt, loads OBJ, uploads geometry, loads textures,
+        // generates random positions.  Must be after pgr::initialize() (GPU context).
+        if (!initChests())       return false;
+
+        glClearColor(0.1f, 0.18f, 0.28f, 1.0f);
+        glEnable(GL_DEPTH_TEST);
 
         std::cout << "Scene initialized successfully." << std::endl;
         return true;
@@ -81,41 +80,31 @@ namespace galuszde {
 
 } // namespace galuszde
 
-/// @brief  Program entry point. Creates GLUT window, registers all callbacks,
-///         initializes PGR framework and scene, then enters the GLUT event loop.
-/// @param  argc  Argument count passed by the operating system.
-/// @param  argv  Argument values passed by the operating system.
 int main(int argc, char* argv[]) {
-    // --- GLUT windowing system init ---
     glutInit(&argc, argv);
     glutInitContextVersion(pgr::OGL_VER_MAJOR, pgr::OGL_VER_MINOR);
     glutInitContextFlags(GLUT_FORWARD_COMPATIBLE);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize(WIN_WIDTH, WIN_HEIGHT);
     glutCreateWindow(WIN_TITLE);
-    glutSetCursor(GLUT_CURSOR_NONE);   // hide cursor
+    glutSetCursor(GLUT_CURSOR_NONE);
 
-    // --- Register GLUT callbacks ---
     glutDisplayFunc(galuszde::onDisplay);
     glutReshapeFunc(galuszde::onReshape);
     glutKeyboardFunc(galuszde::onKeyDown);
     glutKeyboardUpFunc(galuszde::onKeyUp);
     glutPassiveMotionFunc(galuszde::onMouseMotion);
     glutMouseFunc(galuszde::onMouse);
-    glutTimerFunc(16, galuszde::onTimer, 0);   // 16ms ~= 60 FPS game loop
+    glutSpecialFunc(galuszde::onSpecialKeyDown);   // arrow keys, F1-F12
+    glutTimerFunc(16, galuszde::onTimer, 0);
 
-    // --- PGR framework init ---
     if (!pgr::initialize(pgr::OGL_VER_MAJOR, pgr::OGL_VER_MINOR))
         pgr::dieWithError("pgr::initialize() failed");
 
-    // --- Scene init: models, water, volcano, shaders ---
     if (!galuszde::init())
         pgr::dieWithError("init() failed -- see error messages above.");
 
-    // --- Cleanup callback ---
     glutCloseFunc(galuszde::finalize);
-
-    // --- GLUT main loop ---
     glutMainLoop();
     return 0;
 }
