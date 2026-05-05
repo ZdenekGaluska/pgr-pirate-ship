@@ -12,6 +12,7 @@
 #include "algorithms.h"
 #include "physics.h"
 #include "chest.h"
+#include <cctype>
 
 namespace galuszde {
 
@@ -344,56 +345,54 @@ namespace galuszde {
     }
 
     // =========================================================================
-    // onDisplay()
+    // buildViewMatrix()
     // =========================================================================
 
-    void onDisplay() {
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glUseProgram(g_shaderLocation.program);
-
-        float time = glutGet(GLUT_ELAPSED_TIME) / 800.0f;
-
-        // View matrix -- depends on active camera mode
-        glm::mat4 view;
+    /// @brief  Computes the view matrix for the currently active camera mode.
+    ///         CAM_SHIP also updates g_camPos as a side effect (third-person offset).
+    /// @return View matrix ready to pass to draw calls.
+    static glm::mat4 buildViewMatrix() {
         if (g_cameraMode == CAM_SHIP) {
             glm::vec3 shipFront = glm::normalize(glm::vec3(
                 cos(glm::radians(g_shipYaw)), 0.0f, sin(glm::radians(g_shipYaw))
             ));
             g_camPos = g_shipPos - shipFront * 9.0f + glm::vec3(0.0f, 4.0f, 0.0f);
-            view = glm::lookAt(g_camPos,
+            return glm::lookAt(g_camPos,
                 g_shipPos + glm::vec3(0.0f, 2.2f, 0.0f),
                 glm::vec3(0.0f, 1.0f, 0.0f));
         }
-        if (g_cameraMode == CAM_FREE) {
-            view = glm::lookAt(g_camPos,
-                g_camPos + getCamFront(),
-                glm::vec3(0.0f, 1.0f, 0.0f));
-        }
+        if (g_cameraMode == CAM_FREE)
+            return glm::lookAt(g_camPos, g_camPos + getCamFront(), glm::vec3(0.0f, 1.0f, 0.0f));
+        if (g_cameraMode == CAM_STATIC1)
+            return glm::lookAt(CAM_STATIC1_POS, CAM_STATIC1_TARGET, glm::vec3(0.0f, 1.0f, 0.0f));
+        return glm::lookAt(CAM_STATIC2_POS, CAM_STATIC2_TARGET, glm::vec3(0.0f, 1.0f, 0.0f));
+    }
 
-        // Projection matrix -- shared by all objects
-        glm::mat4 proj = glm::perspective(
-            glm::radians(45.0f),
-            (float)WIN_WIDTH / WIN_HEIGHT,
-            0.1f,
-            200.0f
-        );
+    // =========================================================================
+    // drawScene()
+    // =========================================================================
 
-        // Scene-wide lighting uniforms (same for ship, volcano, water in main shader)
+    /// @brief  Renders all scene objects in correct draw order.
+    ///
+    ///         Order: opaque objects (ship, volcano, chests) -> skybox -> water.
+    ///         Skybox switches shader programs internally; the main shader is
+    ///         re-bound before water so lighting uniforms are active again.
+    ///
+    /// @param  view  View matrix from buildViewMatrix().
+    /// @param  proj  Projection matrix from onDisplay().
+    /// @param  time  Elapsed time for Gerstner wave animation.
+    static void drawScene(const glm::mat4& view, const glm::mat4& proj, float time) {
+        glUseProgram(g_shaderLocation.program);
         glUniform3fv(g_shaderLocation.vLightDir, 1, glm::value_ptr(LIGHT_DIR));
         glUniform3fv(g_shaderLocation.vCameraPos, 1, glm::value_ptr(g_camPos));
         glUniform1f(g_shaderLocation.fTime, time);
 
-        // Draw all opaque scene objects with the main shader
         drawShip(view, proj);
         drawVolcano(view, proj);
+        drawChests(view, proj);   // switches to chest shader internally
+        drawSkybox(view, proj);   // switches to skybox shader internally
 
-        // Draw chests with the dedicated chest shader (normal map + env map)
-        drawChests(view, proj);
-
-        // Skybox drawn last among opaques -- depth trick requires GL_LEQUAL
-        drawSkybox(view, proj);
-
-        // Water drawn after skybox -- main shader re-bound here
+        // Re-bind main shader: drawSkybox left program = 0
         glUseProgram(g_shaderLocation.program);
         glUniform3fv(g_shaderLocation.vLightDir, 1, glm::value_ptr(LIGHT_DIR));
         glUniform3fv(g_shaderLocation.vCameraPos, 1, glm::value_ptr(g_camPos));
@@ -401,6 +400,26 @@ namespace galuszde {
 
         glBindVertexArray(0);
         glUseProgram(0);
+    }
+
+    // =========================================================================
+    // onDisplay()
+    // =========================================================================
+
+    void onDisplay() {
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        float time = glutGet(GLUT_ELAPSED_TIME) / 800.0f;
+
+        glm::mat4 view = buildViewMatrix();
+        glm::mat4 proj = glm::perspective(
+            glm::radians(45.0f),
+            (float)WIN_WIDTH / WIN_HEIGHT,
+            0.1f, 200.0f
+        );
+
+        drawScene(view, proj, time);
+
         glutSwapBuffers();
     }
 
@@ -416,22 +435,24 @@ namespace galuszde {
     // onKeyDown() / onKeyUp()
     // =========================================================================
 
-    void onKeyDown(unsigned char key, int /*x*/, int /*y*/) {
-        if (key == 27) glutLeaveMainLoop();   // ESC -- exit cleanly
-
-        g_keys[key] = true;
-
-        if (key == 9)    // TAB -- cycle camera modes
-            g_cameraMode = (CameraMode)((g_cameraMode + 1) % 2);
-
-        if (key == 'r' || key == 'R') {
-            // R -- reload config.txt and regenerate chest positions (rubric 10c)
-            reloadChests();
-        }
-    }
-
     void onKeyUp(unsigned char key, int /*x*/, int /*y*/) {
         g_keys[key] = false;
+    }
+
+    void onKeyDown(unsigned char key, int /*x*/, int /*y*/) {
+        if (key == 27) glutLeaveMainLoop();   // ESC -- exit
+
+        // Normalize to lowercase so g_keys['w'] works even with Shift held
+        g_keys[key] = true;
+        g_keys[(unsigned char)tolower(key)] = true;
+
+        // Sprint state: Shift held during any key event
+        g_sprint = (glutGetModifiers() & GLUT_ACTIVE_SHIFT) != 0;
+
+        if (key == 9)  // TAB -- cycle all camera modes
+            g_cameraMode = (CameraMode)((g_cameraMode + 1) % 4);
+        if (key == 'r' || key == 'R')
+            reloadChests();
     }
 
     // =========================================================================
@@ -525,12 +546,29 @@ namespace galuszde {
         glutPostRedisplay();
     }
 
+    void onSpecialKeyUp(int key, int /*x*/, int /*y*/) {
+        if (key == GLUT_KEY_UP)    g_arrowKeys[0] = false;
+        if (key == GLUT_KEY_DOWN)  g_arrowKeys[1] = false;
+        if (key == GLUT_KEY_LEFT)  g_arrowKeys[2] = false;
+        if (key == GLUT_KEY_RIGHT) g_arrowKeys[3] = false;
+
+        g_sprint = (glutGetModifiers() & GLUT_ACTIVE_SHIFT) != 0;
+    }
+
     void onSpecialKeyDown(int key, int /*x*/, int /*y*/) {
-        if (key == GLUT_KEY_F1) {
-            // F1 -- doubles chest count and randomises seed (rubric -- function keys)
-            resetChestsAction();
-            glutPostRedisplay();
-        }
+        // F1-F4: pøímý výbìr kamery
+        if (key == GLUT_KEY_F1) { g_cameraMode = CAM_STATIC1; glutPostRedisplay(); return; }
+        if (key == GLUT_KEY_F2) { g_cameraMode = CAM_STATIC2; glutPostRedisplay(); return; }
+        if (key == GLUT_KEY_F3) { g_cameraMode = CAM_FREE;    glutPostRedisplay(); return; }
+        if (key == GLUT_KEY_F4) { g_cameraMode = CAM_SHIP;    glutPostRedisplay(); return; }
+
+        // Šipky: pohyb (stejná logika jako WASD, zpracuje updateCamera())
+        if (key == GLUT_KEY_UP)    g_arrowKeys[0] = true;
+        if (key == GLUT_KEY_DOWN)  g_arrowKeys[1] = true;
+        if (key == GLUT_KEY_LEFT)  g_arrowKeys[2] = true;
+        if (key == GLUT_KEY_RIGHT) g_arrowKeys[3] = true;
+
+        g_sprint = (glutGetModifiers() & GLUT_ACTIVE_SHIFT) != 0;
     }
 
 } // namespace galuszde

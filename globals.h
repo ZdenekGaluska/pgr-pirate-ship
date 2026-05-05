@@ -34,6 +34,15 @@ const float SHIP_TURN_SPEED = 0.30f;
 const float SHIP_SLOPE_MULT = 1.0f;    // how much wave slope increases the target speed
 const float SHIP_MOD_FACTOR = 0.5f;    // how fast g_shipSpeedMod lerps toward the target speed
 const float SHIP_SPEED_SCALE = 0.04f;   // global speed scalar -- keeps all ship movement values small
+const float SPRINT_MULT = 10.4f; // speed modifier while holding Shift
+
+// Static camera 1 -- top view on volcano
+const glm::vec3 CAM_STATIC1_POS = glm::vec3(15.0f, 26.0f, -5.0f);
+const glm::vec3 CAM_STATIC1_TARGET = glm::vec3(30.0f, 2.0f, -20.0f);
+
+// Static camera -- ocean panorama 
+const glm::vec3 CAM_STATIC2_POS = glm::vec3(-55.0f, 14.0f, 55.0f);
+const glm::vec3 CAM_STATIC2_TARGET = glm::vec3(0.0f, 0.0f, 0.0f);
 
 // --- Ocean constants ---
 const int   OCEAN_GRID_DENSITY = 1024;   // Number of vertices per grid side.
@@ -69,7 +78,10 @@ struct Mesh {
 /// Active camera mode.
 enum CameraMode {
     CAM_FREE = 0,   // free-fly FPS camera
-    CAM_SHIP = 1    // third-person camera following the ship
+    CAM_SHIP = 1,   // third  person boat view
+    CAM_STATIC1 = 2,   // static view on volcano
+    CAM_STATIC2 = 3     // static view on ocean
+        
 };
 
 /**
@@ -209,3 +221,6 @@ extern CameraMode g_cameraMode;
 
 // --- Lighting ---
 extern const glm::vec3 LIGHT_DIR;
+
+extern bool g_sprint;          ///< true while Shift is held -- multiplies movement speed
+extern bool g_arrowKeys[4];    ///< arrow key state: [0]=up [1]=down [2]=left [3]=right

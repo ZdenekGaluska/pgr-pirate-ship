@@ -96,6 +96,7 @@ int main(int argc, char* argv[]) {
     glutPassiveMotionFunc(galuszde::onMouseMotion);
     glutMouseFunc(galuszde::onMouse);
     glutSpecialFunc(galuszde::onSpecialKeyDown);   // arrow keys, F1-F12
+    glutSpecialUpFunc(galuszde::onSpecialKeyUp);
     glutTimerFunc(16, galuszde::onTimer, 0);
 
     if (!pgr::initialize(pgr::OGL_VER_MAJOR, pgr::OGL_VER_MINOR))

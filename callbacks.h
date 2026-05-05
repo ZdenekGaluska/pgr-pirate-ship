@@ -76,4 +76,11 @@ namespace galuszde {
     /// @param  y    Mouse Y position in pixels at the time of the key press.
     void onSpecialKeyDown(int key, int x, int y);
 
+    /// @brief  Called by GLUT on special key release (arrow keys, F1-F12).
+    ///         Clears the corresponding arrow key state and updates sprint flag.
+    /// @param  key  GLUT key constant (GLUT_KEY_UP, GLUT_KEY_DOWN, ...).
+    /// @param  x    Mouse X position in pixels.
+    /// @param  y    Mouse Y position in pixels.
+    void onSpecialKeyUp(int key, int x, int y);
+
 } // namespace galuszde
