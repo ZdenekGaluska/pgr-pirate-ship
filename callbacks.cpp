@@ -13,6 +13,8 @@
 #include "physics.h"
 #include "chest.h"
 #include <cctype>
+#include "bird.h"
+#include "cloud/cloud.h"
 
 namespace galuszde {
 
@@ -49,8 +51,9 @@ namespace galuszde {
         g_shaderLocation.vCameraPos = glGetUniformLocation(g_shaderLocation.program, "vCameraPos");
         g_shaderLocation.fWaterUVScale = glGetUniformLocation(g_shaderLocation.program, "uWaterUVScale");
         g_shaderLocation.fTime = glGetUniformLocation(g_shaderLocation.program, "u_time");
+        g_shaderLocation.vCameraDir = glGetUniformLocation(g_shaderLocation.program, "vCameraDir");
 
-        // Material uniforms (rubric 9b) -- set per object in draw calls
+        // Material uniforms 
         g_shaderLocation.uAmbient = glGetUniformLocation(g_shaderLocation.program, "u_ambient");
         g_shaderLocation.uSpecularStr = glGetUniformLocation(g_shaderLocation.program, "u_specularStr");
         g_shaderLocation.uShininess = glGetUniformLocation(g_shaderLocation.program, "u_shininess");
@@ -363,8 +366,12 @@ namespace galuszde {
         }
         if (g_cameraMode == CAM_FREE)
             return glm::lookAt(g_camPos, g_camPos + getCamFront(), glm::vec3(0.0f, 1.0f, 0.0f));
-        if (g_cameraMode == CAM_STATIC1)
+        if (g_cameraMode == CAM_STATIC1) {
+            g_camPos = CAM_STATIC1_POS;   // grid follows static camera position
             return glm::lookAt(CAM_STATIC1_POS, CAM_STATIC1_TARGET, glm::vec3(0.0f, 1.0f, 0.0f));
+        }
+        // CAM_STATIC2 falls through as default
+        g_camPos = CAM_STATIC2_POS;       // grid follows static camera position
         return glm::lookAt(CAM_STATIC2_POS, CAM_STATIC2_TARGET, glm::vec3(0.0f, 1.0f, 0.0f));
     }
 
@@ -385,17 +392,21 @@ namespace galuszde {
         glUseProgram(g_shaderLocation.program);
         glUniform3fv(g_shaderLocation.vLightDir, 1, glm::value_ptr(LIGHT_DIR));
         glUniform3fv(g_shaderLocation.vCameraPos, 1, glm::value_ptr(g_camPos));
+        glUniform3fv(g_shaderLocation.vCameraDir, 1, glm::value_ptr(getCamFront()));
         glUniform1f(g_shaderLocation.fTime, time);
 
         drawShip(view, proj);
         drawVolcano(view, proj);
-        drawChests(view, proj);   // switches to chest shader internally
-        drawSkybox(view, proj);   // switches to skybox shader internally
+        drawBird(view, proj);   // seagull circling the volcano
+        drawChests(view, proj);
+        drawSkybox(view, proj);
+        drawCloud(view, proj);   // spritesheet cloud above volcano
 
         // Re-bind main shader: drawSkybox left program = 0
         glUseProgram(g_shaderLocation.program);
         glUniform3fv(g_shaderLocation.vLightDir, 1, glm::value_ptr(LIGHT_DIR));
         glUniform3fv(g_shaderLocation.vCameraPos, 1, glm::value_ptr(g_camPos));
+        glUniform3fv(g_shaderLocation.vCameraDir, 1, glm::value_ptr(getCamFront()));
         drawWater(view, proj, time);
 
         glBindVertexArray(0);
@@ -435,24 +446,24 @@ namespace galuszde {
     // onKeyDown() / onKeyUp()
     // =========================================================================
 
-    void onKeyUp(unsigned char key, int /*x*/, int /*y*/) {
-        g_keys[key] = false;
-    }
-
     void onKeyDown(unsigned char key, int /*x*/, int /*y*/) {
-        if (key == 27) glutLeaveMainLoop();   // ESC -- exit
+        if (key == 27) glutLeaveMainLoop();
 
-        // Normalize to lowercase so g_keys['w'] works even with Shift held
-        g_keys[key] = true;
+        // Store only lowercase -- prevents stuck keys when Shift is released before the key
         g_keys[(unsigned char)tolower(key)] = true;
 
-        // Sprint state: Shift held during any key event
         g_sprint = (glutGetModifiers() & GLUT_ACTIVE_SHIFT) != 0;
 
-        if (key == 9)  // TAB -- cycle all camera modes
+        if (key == 9)
             g_cameraMode = (CameraMode)((g_cameraMode + 1) % 4);
         if (key == 'r' || key == 'R')
             reloadChests();
+    }
+
+    void onKeyUp(unsigned char key, int /*x*/, int /*y*/) {
+        // Mirror onKeyDown -- always clear lowercase so state stays consistent
+        g_keys[(unsigned char)tolower(key)] = false;
+        g_sprint = (glutGetModifiers() & GLUT_ACTIVE_SHIFT) != 0;
     }
 
     // =========================================================================
@@ -541,6 +552,8 @@ namespace galuszde {
 
         updateCamera();
         updateShip();
+        updateBird(0.016f); // dt in seconds: timer fires every 16 ms
+        updateCloud(0.0016f);
 
         glutTimerFunc(16, onTimer, 0);
         glutPostRedisplay();

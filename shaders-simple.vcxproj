@@ -83,9 +83,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="algorithms.cpp" />
+    <ClCompile Include="bird.cpp" />
     <ClCompile Include="callbacks.cpp" />
     <ClCompile Include="camera.cpp" />
     <ClCompile Include="chest.cpp" />
+    <ClCompile Include="cloud.cpp" />
     <ClCompile Include="globals.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="mesh_utils.cpp" />
@@ -95,6 +97,8 @@
     <ClCompile Include="volcano.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="cloud-fs.glsl" />
+    <None Include="cloud-vs.glsl" />
     <None Include="README.txt" />
     <None Include="simple-fs.glsl" />
     <None Include="simple-vs.glsl" />
@@ -105,9 +109,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="algorithms.h" />
+    <ClInclude Include="bird.h" />
     <ClInclude Include="callbacks.h" />
     <ClInclude Include="camera.h" />
     <ClInclude Include="chest.h" />
+    <ClInclude Include="cloud.h" />
     <ClInclude Include="globals.h" />
     <ClInclude Include="mesh_utils.h" />
     <ClInclude Include="obj_loader.h" />

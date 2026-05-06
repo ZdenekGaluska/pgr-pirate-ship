@@ -32,9 +32,9 @@ const float SHIP_SPEED = 0.1f;
 const float SHIP_TURN_SPEED = 0.30f;
 
 const float SHIP_SLOPE_MULT = 1.0f;    // how much wave slope increases the target speed
-const float SHIP_MOD_FACTOR = 0.5f;    // how fast g_shipSpeedMod lerps toward the target speed
+const float SHIP_MOD_FACTOR = 0.05f;    // how fast g_shipSpeedMod lerps toward the target speed
 const float SHIP_SPEED_SCALE = 0.04f;   // global speed scalar -- keeps all ship movement values small
-const float SPRINT_MULT = 10.4f; // speed modifier while holding Shift
+const float SPRINT_MULT = 4.0f; // speed modifier while holding Shift
 
 // Static camera 1 -- top view on volcano
 const glm::vec3 CAM_STATIC1_POS = glm::vec3(15.0f, 26.0f, -5.0f);
@@ -45,8 +45,8 @@ const glm::vec3 CAM_STATIC2_POS = glm::vec3(-55.0f, 14.0f, 55.0f);
 const glm::vec3 CAM_STATIC2_TARGET = glm::vec3(0.0f, 0.0f, 0.0f);
 
 // --- Ocean constants ---
-const int   OCEAN_GRID_DENSITY = 1024;   // Number of vertices per grid side.
-const float OCEAN_SIZE = 240.0f; // World-space extent of the ocean grid (XZ).
+const int   OCEAN_GRID_DENSITY = 1500;   // Number of vertices per grid side.
+const float OCEAN_SIZE = 400.0f; // World-space extent of the ocean grid (XZ).
 
 // --- Model constants ---
 
@@ -56,6 +56,18 @@ const char* const MODEL_PATH = "pirate_ship/scene.gltf";
 
 // --- Volcano world position ---
 extern const glm::vec3 VOLCANO_POS;
+
+// Bird animation constants
+const float BIRD_RADIUS = 15.0f;   // circle radius around volcano
+const float BIRD_HEIGHT = 18.0f;   // height above volcano base
+const float BIRD_SPEED = 0.4f;    // angular velocity (radians per second)
+
+// Cloud animation constants
+const float CLOUD_HEIGHT = 40.0f;   // height above volcano base
+const float CLOUD_SIZE = 15.0f;   // half-extent of the plane in world units
+const float CLOUD_FPS = 2.0f;    // frames per second (slow drifting clouds)
+const int   CLOUD_FRAME_COLS = 2;       // spritesheet columns
+const int   CLOUD_FRAME_ROWS = 3;       // spritesheet rows
 
 // --- Data types ---
 
@@ -116,6 +128,7 @@ struct ShaderLocations {
     GLint  uAmbient = -1;   ///< uniform "u_ambient"     = ambient light factor
     GLint  uSpecularStr = -1;   ///< uniform "u_specularStr" = specular intensity multiplier
     GLint  uShininess = -1;   ///< uniform "u_shininess"   = Phong shininess exponent
+    GLint vCameraDir = -1;   ///< uniform "vCameraDir" = normalized camera look direction
 };
 
 /// Cached uniform locations for the skybox shader program.
@@ -131,6 +144,29 @@ struct SkyboxData {
     GLuint vao = 0;
     GLuint vbo = 0;
     GLuint cubemapTexture = 0;
+};
+
+/// @brief  Runtime state of the animated seagull (rubric 16a).
+struct BirdState {
+    Mesh  mesh;           ///< GPU geometry loaded from seagull OBJ/GLTF.
+    float angle = 0.0f;   ///< Current angle on the circle (radians).
+};
+
+/// @brief  Cloud plane state -- spritesheet animation above volcano (rubric 15b).
+struct CloudData {
+    GLuint vao = 0;
+    GLuint vbo = 0;
+    GLuint ibo = 0;
+    GLuint texture = 0;
+
+    // Shader locations
+    GLuint program = 0;
+    GLint  locPVM = -1;
+    GLint  locFrameOff = -1;
+    GLint  locAlpha = -1;
+    GLint  locTexture = -1;
+
+    float  timer = 0.0f;   ///< Accumulated time for frame selection.
 };
 
 // ---------------------------------------------------------------------------
@@ -224,3 +260,7 @@ extern const glm::vec3 LIGHT_DIR;
 
 extern bool g_sprint;          ///< true while Shift is held -- multiplies movement speed
 extern bool g_arrowKeys[4];    ///< arrow key state: [0]=up [1]=down [2]=left [3]=right
+
+extern BirdState g_bird;
+
+extern CloudData g_cloud;

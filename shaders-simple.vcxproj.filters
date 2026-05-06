@@ -16,6 +16,8 @@
     <ClCompile Include="chest.cpp">
       <Filter>chest</Filter>
     </ClCompile>
+    <ClCompile Include="bird.cpp" />
+    <ClCompile Include="cloud.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="algorithms.h" />
@@ -32,6 +34,8 @@
     <ClInclude Include="chest.h">
       <Filter>chest</Filter>
     </ClInclude>
+    <ClInclude Include="bird.h" />
+    <ClInclude Include="cloud.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="README.txt" />
@@ -49,6 +53,8 @@
     <None Include="treasure\chest-fs.glsl">
       <Filter>chest</Filter>
     </None>
+    <None Include="cloud-vs.glsl" />
+    <None Include="cloud-fs.glsl" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="skybox">

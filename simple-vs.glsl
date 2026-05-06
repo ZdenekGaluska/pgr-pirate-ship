@@ -106,7 +106,10 @@ void main() {
 
         // Normal is already in world space -- Gerstner computes it in world coords directly
         vNormal   = normalize(nAccum);
-        vTexCoord = (vWorldPos.xz + disp.xz) * uWaterUVScale;  // UV follows vertex movement
+
+        // UV offset driven by time -- creates the illusion of flowing water (rubric 14a)
+        vTexCoord = (vWorldPos.xz + disp.xz) * uWaterUVScale + vec2(u_time * 0.01, u_time * 0.007);
+
         vWorldPos = vec3(mModel * vec4(displacedPos, 1.0));
         gl_Position = mPVM * vec4(displacedPos, 1.0);
 

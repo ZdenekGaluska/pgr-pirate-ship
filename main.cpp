@@ -13,6 +13,8 @@
 #include "volcano.h"
 #include "chest.h"
 #include "skybox/skybox.h"
+#include "bird.h"
+#include "cloud/cloud.h"
 
 namespace galuszde {
 
@@ -37,6 +39,13 @@ namespace galuszde {
         glDeleteBuffers(1, &g_volcano.ibo);
         glDeleteTextures(1, &g_volcano.texture);
 
+        glDeleteVertexArrays(1, &g_bird.mesh.vao);
+        glDeleteBuffers(1, &g_bird.mesh.vbo);
+        glDeleteBuffers(1, &g_bird.mesh.ibo);
+        glDeleteTextures(1, &g_bird.mesh.texture);
+
+        destroyCloud();
+
         // Release chest GPU resources
         glDeleteVertexArrays(1, &g_chestGeom.vao);
         glDeleteBuffers(1, &g_chestGeom.vbo);
@@ -59,9 +68,11 @@ namespace galuszde {
         if (!loadShipModel())    return false;
         if (!initWater())        return false;
         if (!initVolcano())      return false;
+        if (!initBird())         return false;
         if (!initShaders())      return false;
         if (!initSkyboxShader()) return false;
         if (!initSkybox())       return false;
+        if (!initCloud())        return false;
 
         // Chest shader must be compiled before initChests() because initChests()
         // only loads geometry/textures -- the shader is a separate step.
@@ -80,6 +91,13 @@ namespace galuszde {
 
 } // namespace galuszde
 
+/**
+ * @brief   Application entry point. Sets up GLUT window, registers callbacks,
+ *          initialises the PGR framework and runs the main event loop.
+ * @param   argc  Number of command-line arguments passed by the OS.
+ * @param   argv  Array of command-line argument strings.
+ * @return  Always 0 (glutMainLoop never returns in practice).
+ */
 int main(int argc, char* argv[]) {
     glutInit(&argc, argv);
     glutInitContextVersion(pgr::OGL_VER_MAJOR, pgr::OGL_VER_MINOR);
@@ -95,7 +113,7 @@ int main(int argc, char* argv[]) {
     glutKeyboardUpFunc(galuszde::onKeyUp);
     glutPassiveMotionFunc(galuszde::onMouseMotion);
     glutMouseFunc(galuszde::onMouse);
-    glutSpecialFunc(galuszde::onSpecialKeyDown);   // arrow keys, F1-F12
+    glutSpecialFunc(galuszde::onSpecialKeyDown);
     glutSpecialUpFunc(galuszde::onSpecialKeyUp);
     glutTimerFunc(16, galuszde::onTimer, 0);
 

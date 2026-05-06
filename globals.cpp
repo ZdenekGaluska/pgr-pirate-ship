@@ -49,3 +49,6 @@ const glm::vec3 VOLCANO_POS = glm::vec3(30.0f, -2.0f, -20.0f);
 
 bool g_sprint = false;
 bool g_arrowKeys[4] = {};
+
+BirdState g_bird;
+CloudData g_cloud;
