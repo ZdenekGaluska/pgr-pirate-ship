@@ -128,6 +128,7 @@ struct ShaderLocations {
     GLint  uAmbient = -1;   ///< uniform "u_ambient"     = ambient light factor
     GLint  uSpecularStr = -1;   ///< uniform "u_specularStr" = specular intensity multiplier
     GLint  uShininess = -1;   ///< uniform "u_shininess"   = Phong shininess exponent
+    GLint  uLavaActive = -1;   ///< uniform "u_lavaActive" = lava point light on/off
     GLint vCameraDir = -1;   ///< uniform "vCameraDir" = normalized camera look direction
 };
 
@@ -264,3 +265,6 @@ extern bool g_arrowKeys[4];    ///< arrow key state: [0]=up [1]=down [2]=left [3
 extern BirdState g_bird;
 
 extern CloudData g_cloud;
+
+extern bool g_lavaActive;   ///< true = lava point light enabled
+extern bool g_birdPaused;   ///< true = seagull animation paused

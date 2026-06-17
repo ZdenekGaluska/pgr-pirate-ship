@@ -13,7 +13,7 @@
 #include "volcano.h"
 #include "chest.h"
 #include "skybox/skybox.h"
-#include "bird.h"
+#include "seagull/bird.h"
 #include "cloud/cloud.h"
 
 namespace galuszde {

@@ -13,7 +13,7 @@
 #include "physics.h"
 #include "chest.h"
 #include <cctype>
-#include "bird.h"
+#include "seagull/bird.h"
 #include "cloud/cloud.h"
 
 namespace galuszde {
@@ -57,6 +57,7 @@ namespace galuszde {
         g_shaderLocation.uAmbient = glGetUniformLocation(g_shaderLocation.program, "u_ambient");
         g_shaderLocation.uSpecularStr = glGetUniformLocation(g_shaderLocation.program, "u_specularStr");
         g_shaderLocation.uShininess = glGetUniformLocation(g_shaderLocation.program, "u_shininess");
+        g_shaderLocation.uLavaActive = glGetUniformLocation(g_shaderLocation.program, "u_lavaActive");
 
         glUniform1f(g_shaderLocation.fTime, 0.0f);
         glUniform1f(g_shaderLocation.fWaterUVScale, 0.0f);
@@ -393,6 +394,7 @@ namespace galuszde {
         glUniform3fv(g_shaderLocation.vLightDir, 1, glm::value_ptr(LIGHT_DIR));
         glUniform3fv(g_shaderLocation.vCameraPos, 1, glm::value_ptr(g_camPos));
         glUniform3fv(g_shaderLocation.vCameraDir, 1, glm::value_ptr(getCamFront()));
+        glUniform1i(g_shaderLocation.uLavaActive, g_lavaActive ? 1 : 0);
         glUniform1f(g_shaderLocation.fTime, time);
 
         drawShip(view, proj);
@@ -500,28 +502,47 @@ namespace galuszde {
     void onMouse(int button, int state, int /*x*/, int /*y*/) {
         if (state != GLUT_DOWN) return;
 
+        // Right click near volcano -- toggle lava point light on/off
+        if (button == GLUT_RIGHT_BUTTON) {
+            float dist = glm::distance(g_camPos, VOLCANO_POS);
+            if (dist < 35.0f) {
+                g_lavaActive = !g_lavaActive;
+                std::cout << "Lava light: " << (g_lavaActive ? "ON" : "OFF") << std::endl;
+                glutPostRedisplay();
+                return;
+            }
+        }
+
+        // Left click near bird -- toggle seagull animation pause
+        if (button == GLUT_LEFT_BUTTON) {
+            glm::vec3 birdCenter(VOLCANO_POS.x, VOLCANO_POS.y + BIRD_HEIGHT, VOLCANO_POS.z);
+            float dist = glm::distance(g_camPos, birdCenter);
+            if (dist < BIRD_RADIUS + 15.0f) {
+                g_birdPaused = !g_birdPaused;
+                std::cout << "Bird: " << (g_birdPaused ? "paused" : "flying") << std::endl;
+                glutPostRedisplay();
+                return;
+            }
+        }
+
         if (button == GLUT_LEFT_BUTTON && g_cameraMode == CAM_SHIP) {
             // Collect all uncollected chests within pickup distance of the ship.
             int collected = 0;
             for (auto& chest : g_chests) {
                 if (chest.collected) continue;
-
                 // 2D distance in XZ plane (ignore Y differences -- chest is at sea level)
                 float dx = chest.pos.x - g_shipPos.x;
                 float dz = chest.pos.z - g_shipPos.z;
                 float dist = std::sqrt(dx * dx + dz * dz);
-
                 if (dist < g_chestConfig.pickupRadius) {
                     chest.collected = true;
                     ++collected;
                 }
             }
-
             if (collected > 0)
                 std::cout << "Picked up " << collected << " treasure chest(s)!" << std::endl;
             else
                 std::cout << "No chests nearby (sail closer and try again)." << std::endl;
-
             glutPostRedisplay();
             return;
         }
@@ -530,7 +551,6 @@ namespace galuszde {
         glm::vec3 front = getCamFront();
         if (button == 3) g_camPos += front * ZOOM_SPEED;
         else if (button == 4) g_camPos -= front * ZOOM_SPEED;
-
         glutPostRedisplay();
     }
 

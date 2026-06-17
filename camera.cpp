@@ -47,6 +47,18 @@ namespace galuszde {
             if (g_keys['d'] || g_arrowKeys[3]) g_shipYaw += SHIP_TURN_SPEED;
         }
         // CAM_STATIC1 / CAM_STATIC2: camera is fixed, no movement
+        float distToVolcano = glm::distance(
+            glm::vec2(g_shipPos.x, g_shipPos.z),
+            glm::vec2(VOLCANO_POS.x, VOLCANO_POS.z)
+        );
+        if (distToVolcano < 9.5f) {
+            glm::vec2 pushDir = glm::normalize(
+                glm::vec2(g_shipPos.x, g_shipPos.z) -
+                glm::vec2(VOLCANO_POS.x, VOLCANO_POS.z)
+            );
+            g_shipPos.x = VOLCANO_POS.x + pushDir.x * 9.5f;
+            g_shipPos.z = VOLCANO_POS.z + pushDir.y * 9.5f;
+        }
     }
 
 } // namespace galuszde

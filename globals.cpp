@@ -52,3 +52,6 @@ bool g_arrowKeys[4] = {};
 
 BirdState g_bird;
 CloudData g_cloud;
+
+bool g_lavaActive = true;
+bool g_birdPaused = false;

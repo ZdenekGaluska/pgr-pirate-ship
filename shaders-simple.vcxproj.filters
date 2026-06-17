@@ -16,14 +16,13 @@
     <ClCompile Include="chest.cpp">
       <Filter>chest</Filter>
     </ClCompile>
-    <ClCompile Include="bird.cpp" />
     <ClCompile Include="cloud.cpp" />
+    <ClCompile Include="seagull\bird.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="algorithms.h" />
     <ClInclude Include="callbacks.h" />
     <ClInclude Include="camera.h" />
-    <ClInclude Include="globals.h" />
     <ClInclude Include="mesh_utils.h" />
     <ClInclude Include="physics.h" />
     <ClInclude Include="volcano.h" />
@@ -34,27 +33,28 @@
     <ClInclude Include="chest.h">
       <Filter>chest</Filter>
     </ClInclude>
-    <ClInclude Include="bird.h" />
     <ClInclude Include="cloud.h" />
+    <ClInclude Include="seagull\bird.h" />
+    <ClInclude Include="globals.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="README.txt" />
     <None Include="simple-vs.glsl" />
-    <None Include="skybox-vs.glsl">
-      <Filter>skybox</Filter>
-    </None>
-    <None Include="skybox-fs.glsl">
-      <Filter>skybox</Filter>
-    </None>
     <None Include="simple-fs.glsl" />
-    <None Include="treasure\chest-vs.glsl">
+    <None Include="chest\chest-vs.glsl">
       <Filter>chest</Filter>
     </None>
-    <None Include="treasure\chest-fs.glsl">
+    <None Include="chest\chest-fs.glsl">
       <Filter>chest</Filter>
     </None>
-    <None Include="cloud-vs.glsl" />
-    <None Include="cloud-fs.glsl" />
+    <None Include="skybox\skybox-vs.glsl">
+      <Filter>skybox</Filter>
+    </None>
+    <None Include="skybox\skybox-fs.glsl">
+      <Filter>skybox</Filter>
+    </None>
+    <None Include="cloud\cloud-fs.glsl" />
+    <None Include="cloud\cloud-vs.glsl" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="skybox">

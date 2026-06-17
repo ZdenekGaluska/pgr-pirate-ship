@@ -71,6 +71,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(PGR_FRAMEWORK_ROOT)include</AdditionalIncludeDirectories>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -83,7 +84,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="algorithms.cpp" />
-    <ClCompile Include="bird.cpp" />
     <ClCompile Include="callbacks.cpp" />
     <ClCompile Include="camera.cpp" />
     <ClCompile Include="chest.cpp" />
@@ -93,23 +93,23 @@
     <ClCompile Include="mesh_utils.cpp" />
     <ClCompile Include="obj_loader.cpp" />
     <ClCompile Include="physics.cpp" />
+    <ClCompile Include="seagull\bird.cpp" />
     <ClCompile Include="skybox\skybox.cpp" />
     <ClCompile Include="volcano.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="cloud-fs.glsl" />
-    <None Include="cloud-vs.glsl" />
+    <None Include="chest\chest-fs.glsl" />
+    <None Include="chest\chest-vs.glsl" />
+    <None Include="cloud\cloud-fs.glsl" />
+    <None Include="cloud\cloud-vs.glsl" />
     <None Include="README.txt" />
     <None Include="simple-fs.glsl" />
     <None Include="simple-vs.glsl" />
-    <None Include="skybox-fs.glsl" />
-    <None Include="skybox-vs.glsl" />
-    <None Include="treasure\chest-fs.glsl" />
-    <None Include="treasure\chest-vs.glsl" />
+    <None Include="skybox\skybox-fs.glsl" />
+    <None Include="skybox\skybox-vs.glsl" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="algorithms.h" />
-    <ClInclude Include="bird.h" />
     <ClInclude Include="callbacks.h" />
     <ClInclude Include="camera.h" />
     <ClInclude Include="chest.h" />
@@ -118,6 +118,7 @@
     <ClInclude Include="mesh_utils.h" />
     <ClInclude Include="obj_loader.h" />
     <ClInclude Include="physics.h" />
+    <ClInclude Include="seagull\bird.h" />
     <ClInclude Include="skybox\skybox.h" />
     <ClInclude Include="volcano.h" />
   </ItemGroup>

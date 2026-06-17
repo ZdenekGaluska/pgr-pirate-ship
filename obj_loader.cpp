@@ -169,32 +169,35 @@ namespace galuszde {
     }
 
     // -----------------------------------------------------------------------
-    // loadOBJ()
-    // -----------------------------------------------------------------------
+// parseOBJFile()
+// -----------------------------------------------------------------------
 
-    ObjData loadOBJ(const std::string& path) {
-        ObjData result;
-
+/// @brief  Pass 1 -- reads raw v / vt / vn / f lines from the OBJ file.
+///
+///         Faces are stored as raw FaceVertex triples and resolved in Pass 2,
+///         because OBJ negative indices require the final array sizes to resolve.
+///
+/// @param path      Path to the .obj file.
+/// @param outPos    Output raw position list.
+/// @param outUV     Output raw UV list.
+/// @param outNorm   Output raw normal list.
+/// @param outFaces  Output raw face list.
+/// @return          false if the file cannot be opened or contains no vertices.
+    static bool parseOBJFile(
+        const std::string& path,
+        std::vector<glm::vec3>& outPos,
+        std::vector<glm::vec2>& outUV,
+        std::vector<glm::vec3>& outNorm,
+        std::vector<std::vector<FaceVertex>>& outFaces)
+    {
         std::ifstream file(path);
         if (!file.is_open()) {
             std::cerr << "OBJ loader: cannot open file: " << path << std::endl;
-            return result;
+            return false;
         }
-
-        // ---- Pass 1: collect raw v / vt / vn arrays -------------------------
-
-        std::vector<glm::vec3> rawPos;    // all 'v' lines
-        std::vector<glm::vec2> rawUV;     // all 'vt' lines
-        std::vector<glm::vec3> rawNorm;   // all 'vn' lines
-
-        // Faces are stored temporarily until all raw arrays are complete,
-        // because OBJ negative indices need the final array sizes to resolve.
-        // Each face is a list of FaceVertex triples (may be 3 or 4 vertices).
-        std::vector<std::vector<FaceVertex>> rawFaces;
 
         std::string line;
         while (std::getline(file, line)) {
-            // Skip empty lines and comments
             if (line.empty() || line[0] == '#') continue;
 
             std::istringstream ss(line);
@@ -202,75 +205,81 @@ namespace galuszde {
             ss >> keyword;
 
             if (keyword == "v") {
-                // Vertex position: v x y z
                 glm::vec3 p;
                 ss >> p.x >> p.y >> p.z;
-                rawPos.push_back(p);
+                outPos.push_back(p);
             }
             else if (keyword == "vt") {
-                // Texture coordinate: vt u v  (third component w is optional, ignored)
                 glm::vec2 uv;
                 ss >> uv.x >> uv.y;
-                rawUV.push_back(uv);
+                outUV.push_back(uv);
             }
             else if (keyword == "vn") {
-                // Vertex normal: vn nx ny nz
                 glm::vec3 n;
                 ss >> n.x >> n.y >> n.z;
-                rawNorm.push_back(n);
+                outNorm.push_back(n);
             }
             else if (keyword == "f") {
-                // Face: f v/vt/vn ... (3 or 4 tokens for triangle / quad)
                 std::vector<FaceVertex> face;
                 std::string token;
                 while (ss >> token)
                     face.push_back(parseFaceVertex(token));
                 if (face.size() >= 3)
-                    rawFaces.push_back(face);
+                    outFaces.push_back(face);
             }
-            // All other keywords (o, g, s, mtllib, usemtl, ...) are ignored.
         }
         file.close();
 
-        if (rawPos.empty()) {
+        if (outPos.empty()) {
             std::cerr << "OBJ loader: no vertices found in: " << path << std::endl;
-            return result;
+            return false;
         }
+        return true;
+    }
 
-        // ---- Pass 2: build indexed interleaved buffer -----------------------
-        //
-        // OBJ can have different (v, vt, vn) combinations that share the same
-        // position -- e.g. a seam vertex needs two UV coordinates.
-        // We deduplicate by mapping each unique triple to one output vertex.
-        //
-        // Key format: "posIdx/uvIdx/nrmIdx" (all 0-based after resolution).
+    // -----------------------------------------------------------------------
+    // buildIndexedBuffer()
+    // -----------------------------------------------------------------------
+
+    /// @brief  Pass 2 -- converts raw OBJ face list into a deduplicated
+    ///         interleaved vertex buffer and an index buffer.
+    ///
+    ///         OBJ can have different (v, vt, vn) combinations that share the same
+    ///         position (e.g. a seam vertex needs two UV coordinates).
+    ///         Each unique combination gets exactly one output vertex.
+    ///         Quads are fan-triangulated into two triangles.
+    ///
+    /// @param rawPos    Raw position list from parseOBJFile().
+    /// @param rawUV     Raw UV list from parseOBJFile().
+    /// @param rawNorm   Raw normal list from parseOBJFile().
+    /// @param rawFaces  Raw face list from parseOBJFile().
+    /// @param result    Output ObjData; vertices and indices are filled in.
+    static void buildIndexedBuffer(
+        const std::vector<glm::vec3>& rawPos,
+        const std::vector<glm::vec2>& rawUV,
+        const std::vector<glm::vec3>& rawNorm,
+        const std::vector<std::vector<FaceVertex>>& rawFaces,
+        ObjData& result)
+    {
+        // Maps "posIdx/uvIdx/nrmIdx" -> output vertex index for deduplication.
         std::unordered_map<std::string, unsigned int> vertexCache;
-
-        const int STRIDE = 11;   // floats per output vertex
+        const int STRIDE = 11;
 
         for (const auto& face : rawFaces) {
-            // Fan-triangulate: for a quad ABCD -> triangles ABC + ACD.
-            // For a triangle the loop runs once.
-            unsigned int fanA = 0;   // index in the face vector, not in the output buffer
-
-            // We need to first resolve all face vertices to output indices,
-            // then fan-triangulate using the resolved output indices.
             std::vector<unsigned int> resolvedIndices;
 
             for (const FaceVertex& fv : face) {
-                // Resolve 1-based / negative OBJ indices to 0-based indices.
                 int pi = resolveIndex(fv.v, static_cast<int>(rawPos.size()));
                 int uvi = resolveIndex(fv.vt, static_cast<int>(rawUV.size()));
                 int ni = resolveIndex(fv.vn, static_cast<int>(rawNorm.size()));
 
-                // Build a string key for deduplication.
                 std::string key = std::to_string(pi) + "/" +
                     std::to_string(uvi) + "/" +
                     std::to_string(ni);
 
                 auto it = vertexCache.find(key);
                 if (it != vertexCache.end()) {
-                    // Already created this vertex -- reuse its index.
+                    // Vertex already exists -- reuse its index.
                     resolvedIndices.push_back(it->second);
                 }
                 else {
@@ -278,27 +287,20 @@ namespace galuszde {
                     unsigned int newIdx = static_cast<unsigned int>(
                         result.vertices.size() / STRIDE);
 
-                    // Position (defaults to origin if index out of range)
                     glm::vec3 p(0.0f);
-                    if (pi >= 0 && pi < static_cast<int>(rawPos.size()))
-                        p = rawPos[pi];
+                    if (pi >= 0 && pi < (int)rawPos.size())  p = rawPos[pi];
 
-                    // Normal (defaults to up if absent or out of range)
                     glm::vec3 n(0.0f, 1.0f, 0.0f);
-                    if (ni >= 0 && ni < static_cast<int>(rawNorm.size()))
-                        n = glm::normalize(rawNorm[ni]);
+                    if (ni >= 0 && ni < (int)rawNorm.size()) n = glm::normalize(rawNorm[ni]);
 
-                    // UV (defaults to (0,0) if absent or out of range)
                     glm::vec2 uv(0.0f);
-                    if (uvi >= 0 && uvi < static_cast<int>(rawUV.size()))
-                        uv = rawUV[uvi];
+                    if (uvi >= 0 && uvi < (int)rawUV.size())   uv = rawUV[uvi];
 
-                    // Tangent is zeroed here -- filled in by computeTangents() below.
                     result.vertices.insert(result.vertices.end(), {
-                        p.x,  p.y,  p.z,
-                        n.x,  n.y,  n.z,
+                        p.x, p.y, p.z,
+                        n.x, n.y, n.z,
                         uv.x, uv.y,
-                        0.0f, 0.0f, 0.0f   // tangent placeholder
+                        0.0f, 0.0f, 0.0f   // tangent -- filled by computeTangents()
                         });
 
                     vertexCache[key] = newIdx;
@@ -306,22 +308,42 @@ namespace galuszde {
                 }
             }
 
-            // Fan-triangulate the face into triangles using resolved output indices.
-            // Triangle fan: (0,1,2), (0,2,3), (0,3,4), ...
+            // Fan-triangulate: (0,1,2), (0,2,3), (0,3,4), ...
             for (size_t i = 2; i < resolvedIndices.size(); ++i) {
                 result.indices.push_back(resolvedIndices[0]);
                 result.indices.push_back(resolvedIndices[i - 1]);
                 result.indices.push_back(resolvedIndices[i]);
             }
         }
+    }
 
-        // ---- Post-pass: compute tangent vectors for all vertices ------------
+    // -----------------------------------------------------------------------
+    // loadOBJ()
+    // -----------------------------------------------------------------------
+
+    ObjData loadOBJ(const std::string& path) {
+        ObjData result;
+
+        // Raw data collected in Pass 1.
+        std::vector<glm::vec3>              rawPos;
+        std::vector<glm::vec2>              rawUV;
+        std::vector<glm::vec3>              rawNorm;
+        std::vector<std::vector<FaceVertex>> rawFaces;
+
+        // Pass 1: read the file.
+        if (!parseOBJFile(path, rawPos, rawUV, rawNorm, rawFaces))
+            return result;
+
+        // Pass 2: build deduplicated interleaved buffer.
+        buildIndexedBuffer(rawPos, rawUV, rawNorm, rawFaces, result);
+
+        // Post-pass: fill in tangent vectors for normal mapping.
         computeTangents(result.vertices, result.indices);
 
         result.numTriangles = static_cast<unsigned int>(result.indices.size() / 3);
 
         std::cout << "OBJ loaded: " << path
-            << "  vertices=" << (result.vertices.size() / STRIDE)
+            << "  vertices=" << (result.vertices.size() / 11)
             << "  triangles=" << result.numTriangles << std::endl;
 
         return result;

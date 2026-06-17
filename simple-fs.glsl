@@ -24,6 +24,8 @@ uniform float u_ambient;
 uniform float u_specularStr;
 uniform float u_shininess;
 
+uniform bool u_lavaActive;   // true = lava point light on
+
 in vec3 vNormal;
 in vec3 vWorldPos;
 in vec2 vTexCoord;
@@ -31,7 +33,7 @@ in vec2 vTexCoord;
 out vec4 fragmentColor;
 
 // -------------------------------------------------------------------------
-// Hardcoded light parameters (rubric 7a -- hardcode in shader)
+// Hardcoded light parameters 
 // -------------------------------------------------------------------------
 
 // Point light: red lava glow at the volcano crater (rubric 8.2)
@@ -129,10 +131,10 @@ void main() {
     vec3 texColor = texture(uTexture, vTexCoord).rgb;
 
     // Combine all three light contributions
-    vec3 lighting = vec3(u_ambient)       // ambient baseline
-                  + calcDirectional(N, V) // sun
-                  + calcPointLight(N, V)  // lava glow
-                  + calcSpotlight(N, V);  // camera torch
+    vec3 lighting = vec3(u_ambient)                                    // ambient baseline
+                  + calcDirectional(N, V)                              // sun
+                  + (u_lavaActive ? calcPointLight(N, V) : vec3(0.0)) // lava glow (toggled)
+                  + calcSpotlight(N, V);                               // camera torch
 
     // Linear fog: blend scene colour toward fog colour based on camera distance (rubric 17a).
     // Fog starts at FOG_START units and is fully opaque at FOG_END units.
@@ -143,5 +145,5 @@ void main() {
     float fragDist  = length(vCameraPos - vWorldPos);
     float fogFactor = clamp((FOG_END - fragDist) / (FOG_END - FOG_START), 0.0, 1.0);
     vec3  litColor  = texColor * lighting;
-    fragmentColor = vec4(mix(FOG_COLOR, litColor, fogFactor), 1.0);
+    fragmentColor   = vec4(mix(FOG_COLOR, litColor, fogFactor), 1.0);
 }
